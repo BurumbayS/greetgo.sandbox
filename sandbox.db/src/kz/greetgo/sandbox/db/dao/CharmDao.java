@@ -10,6 +10,6 @@ public interface CharmDao {
     @Select("Select * from charms")
     List<Charm> getAllCharms();
 
-    @Select("Select name from charms where id = #{charmID}")
+    @Select("Select name from charms where cia_id = #{charmID}")
     String getCharm(@Param("charmID") int charmID);
 }

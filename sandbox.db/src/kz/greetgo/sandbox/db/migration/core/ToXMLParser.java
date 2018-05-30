@@ -8,7 +8,7 @@ public class ToXMLParser {
 
     public String parseToXML(ClientXMLRecord clientXMLRecord) {
         StringBuilder sb = new StringBuilder();
-        sb.append("<client id=\"").append(clientXMLRecord.id).append("\">\n");
+        sb.append("<client cia_id=\"").append(clientXMLRecord.cia_id).append("\">\n");
         if (clientXMLRecord.surname != null) sb.append("<surname value=\"").append(clientXMLRecord.surname).append("\"").append("/>\n");
         if (clientXMLRecord.name != null) sb.append("<name value=\"").append(clientXMLRecord.name).append("\"").append("/>\n");
         if (clientXMLRecord.patronymic != null) sb.append("<patronymic value=\"").append(clientXMLRecord.patronymic).append("\"").append("/>\n");

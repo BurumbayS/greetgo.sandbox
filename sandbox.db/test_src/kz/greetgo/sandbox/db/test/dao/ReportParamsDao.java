@@ -16,5 +16,5 @@ public interface ReportParamsDao {
     void insertReportParams(ReportParamsToSave reportParamsToSave);
 
     @Delete("delete * from report_params where report_id = #{report_id}")
-    void removeRepostParams(int report_id);
+    void removeReportParams(int report_id);
 }

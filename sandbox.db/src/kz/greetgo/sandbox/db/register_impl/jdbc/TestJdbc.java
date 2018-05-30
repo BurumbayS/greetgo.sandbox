@@ -91,14 +91,14 @@ public class TestJdbc implements ConnectionCallback<Void> {
         sql.append("coalesce(MAX(accounts.money), 0) as max_cash, ");
         sql.append("coalesce(MIN(accounts.money), 0) as min_cash ");
         sql.append("from clients ");
-        sql.append("left join accounts on clients.id = accounts.client_id ");
+        sql.append("left join accounts on clients.cia_id = accounts.client_id ");
         sql.append("where name like ? ");
         params.add(filterStr);
         sql.append("or surname like ? ");
         params.add(filterStr);
         sql.append("or patronymic like ? ");
         params.add(filterStr);
-        sql.append("group by clients.id ");
+        sql.append("group by clients.cia_id ");
 
         if ("fio".equals(sortBy)) {
             if ("up".equals(sortOrder)) {
@@ -173,7 +173,7 @@ public class TestJdbc implements ConnectionCallback<Void> {
         params.clear();
 
         sql.append("select name from charms ");
-        sql.append("where id = ?");
+        sql.append("where cia_id = ?");
         params.add(charmID);
     }
 }

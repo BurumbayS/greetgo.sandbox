@@ -24,8 +24,8 @@ public class Migration implements Closeable {
 //    Date nowDate = new Date();
     tmpClientTable = "cia_migration_client_";
     tmpPhoneTable = "cia_migration_phone_";
-    tmpAccountTable = "cia_migration_account_";
-    tmpTransactionTable = "cia_migration_transaction_";
+    tmpAccountTable = "frs_migration_account_";
+    tmpTransactionTable = "frs_migration_transaction_";
     info("TMP_CLIENT = " + tmpClientTable);
     info("TMP_PHONE = " + tmpPhoneTable);
     info("TMP_ACCOUNT = " + tmpAccountTable);
@@ -116,6 +116,7 @@ public class Migration implements Closeable {
       "  status int not null default 0,\n" +
       "  error varchar(300),\n" +
       "  \n" +
+      "  num bigserial primary key,\n" +
       "  cia_id varchar(100) not null,\n" +
       "  tmp_client_id varchar(100) not null,\n" +
       "  number varchar(100),\n" +
@@ -348,7 +349,7 @@ public class Migration implements Closeable {
     exec("update TMP_TRANSACTION set error = 'account number is not defined', status = 1\n" +
             "where error is null and account_number is null");
     //language=PostgreSQL
-    exec("update TMP_ACCOUNT set error = 'client cia id is not defined', status = 1\n" +
+    exec("update TMP_ACCOUNT set error = 'cia_id is not defined', status = 1\n" +
             "where error is null and client_cia_id is null");
     //language=PostgreSQL
     exec("update TMP_ACCOUNT set error = 'account number is not defined', status = 1\n" +
@@ -454,6 +455,10 @@ public class Migration implements Closeable {
             "where tmp.client_cia_id = c.cia_id and tmp.status = 0");
 
     //language=PostgreSQL
+    exec("update TMP_ACCOUNT set status = 1\n" +
+              "where client_id is null and status = 0");
+
+    //language=PostgreSQL
     exec("insert into tmp_accounts (number, registered_at, client_id)\n" +
             "select account_number, registered_at, client_id \n" +
             "from TMP_ACCOUNT tmp\n" +
@@ -476,10 +481,14 @@ public class Migration implements Closeable {
             "where tmp.account_number = acc.number and tmp.status = 0");
 
     //language=PostgreSQL
+    exec("update TMP_TRANSACTION set status = 1\n" +
+              "where account_id is null and status = 0");
+
+    //language=PostgreSQL
     exec("insert into tmp_transactions (money, finished_at, account_id, transaction_type_id)\n" +
             "select money, finished_at, account_id, transaction_type_id \n" +
             "from TMP_TRANSACTION tmp\n" +
-            "where tmp.account_id is not null and tmp.transaction_type_id is not null and tmp.status = 0");
+            "where tmp.status = 0");
 
     //language=PostgreSQL
     exec("update tmp_clients set actual = 1 where id in (\n" +
