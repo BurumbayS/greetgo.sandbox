@@ -1,18 +1,32 @@
 package kz.greetgo.sandbox.db.register_impl;
 
-import kz.greetgo.db.Jdbc;
 import kz.greetgo.depinject.core.Bean;
 import kz.greetgo.depinject.core.BeanGetter;
-import kz.greetgo.sandbox.controller.model.*;
+import kz.greetgo.sandbox.controller.model.Adress;
+import kz.greetgo.sandbox.controller.model.Charm;
+import kz.greetgo.sandbox.controller.model.Client;
+import kz.greetgo.sandbox.controller.model.ClientDetails;
+import kz.greetgo.sandbox.controller.model.ClientRecord;
+import kz.greetgo.sandbox.controller.model.ClientToReturn;
+import kz.greetgo.sandbox.controller.model.ClientToSave;
+import kz.greetgo.sandbox.controller.model.ClientsListParams;
+import kz.greetgo.sandbox.controller.model.ClientsListReportParams;
+import kz.greetgo.sandbox.controller.model.Phone;
+import kz.greetgo.sandbox.controller.model.ReportParamsToSave;
 import kz.greetgo.sandbox.controller.register.ClientRegister;
-import kz.greetgo.sandbox.db.dao.*;
+import kz.greetgo.sandbox.controller.report.ClientsListReportView;
+import kz.greetgo.sandbox.db.dao.AccountDao;
+import kz.greetgo.sandbox.db.dao.AdressDao;
+import kz.greetgo.sandbox.db.dao.CharmDao;
+import kz.greetgo.sandbox.db.dao.ClientDao;
+import kz.greetgo.sandbox.db.dao.ConfigParamsDao;
+import kz.greetgo.sandbox.db.dao.PhoneDao;
+import kz.greetgo.sandbox.db.dao.ReportParamsDao;
 import kz.greetgo.sandbox.db.model.Sorter;
-import kz.greetgo.sandbox.controller.report.*;
 import kz.greetgo.sandbox.db.register_impl.jdbc.TestJdbc;
 import kz.greetgo.sandbox.db.util.JdbcSandbox;
 import kz.greetgo.util.RND;
 
-import java.sql.Date;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -263,8 +277,9 @@ public class ClientRegisterImpl implements ClientRegister {
 
   @Override
   public List<Charm> getCharms() {
+    List<Charm> charms = charmDao.get().getAllCharms();
 
-    return charmDao.get().getAllCharms();
+    return charms;
   }
 
   public BeanGetter<JdbcSandbox> jdbcSandbox;
