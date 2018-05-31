@@ -2,17 +2,7 @@ package kz.greetgo.sandbox.db.register_impl;
 
 import kz.greetgo.depinject.core.Bean;
 import kz.greetgo.depinject.core.BeanGetter;
-import kz.greetgo.sandbox.controller.model.Adress;
-import kz.greetgo.sandbox.controller.model.Charm;
-import kz.greetgo.sandbox.controller.model.Client;
-import kz.greetgo.sandbox.controller.model.ClientDetails;
-import kz.greetgo.sandbox.controller.model.ClientRecord;
-import kz.greetgo.sandbox.controller.model.ClientToReturn;
-import kz.greetgo.sandbox.controller.model.ClientToSave;
-import kz.greetgo.sandbox.controller.model.ClientsListParams;
-import kz.greetgo.sandbox.controller.model.ClientsListReportParams;
-import kz.greetgo.sandbox.controller.model.Phone;
-import kz.greetgo.sandbox.controller.model.ReportParamsToSave;
+import kz.greetgo.sandbox.controller.model.*;
 import kz.greetgo.sandbox.controller.register.ClientRegister;
 import kz.greetgo.sandbox.controller.report.ClientsListReportView;
 import kz.greetgo.sandbox.db.dao.AccountDao;
@@ -23,7 +13,7 @@ import kz.greetgo.sandbox.db.dao.ConfigParamsDao;
 import kz.greetgo.sandbox.db.dao.PhoneDao;
 import kz.greetgo.sandbox.db.dao.ReportParamsDao;
 import kz.greetgo.sandbox.db.model.Sorter;
-import kz.greetgo.sandbox.db.register_impl.jdbc.TestJdbc;
+import kz.greetgo.sandbox.db.register_impl.jdbc.ReportJdbc;
 import kz.greetgo.sandbox.db.util.JdbcSandbox;
 import kz.greetgo.util.RND;
 
@@ -84,24 +74,25 @@ public class ClientRegisterImpl implements ClientRegister {
       newPhone.clientID = clientToSave.id;
       newPhone.number = phone;
       //TODO: неверное присвоение типов.
+      // Done
       //Если где-то ещё будет такое же присвоение и программисту нужно будет менять значение типа
       //то нужно будет менять в двух местах, а может и больше.
       //Поменять здесь и в других местах, где идёт присвоение типов.
-      newPhone.phoneType = "MOBILE";
+      newPhone.phoneType = PhoneType.MOBILE.name();
       phoneDao.get().insertPhone(newPhone);
     }
     for (String phone : clientToSave.homePhone) {
       Phone newPhone = new Phone();
       newPhone.clientID = clientToSave.id;
       newPhone.number = phone;
-      newPhone.phoneType = "HOME";
+      newPhone.phoneType = PhoneType.HOME.name();
       phoneDao.get().insertPhone(newPhone);
     }
     for (String phone : clientToSave.workPhone) {
       Phone newPhone = new Phone();
       newPhone.clientID = clientToSave.id;
       newPhone.number = phone;
-      newPhone.phoneType = "WORK";
+      newPhone.phoneType = PhoneType.WORK.name();
       phoneDao.get().insertPhone(newPhone);
     }
   }
@@ -112,10 +103,11 @@ public class ClientRegisterImpl implements ClientRegister {
       adress.id = Integer.parseInt(String.valueOf(clientToSave.id) + "001");
       adress.clientID = clientToSave.id;
       //TODO: неверное присвоение типов.
+      // Done
       //Если где-то ещё будет такое же присвоение и программисту нужно будет менять значение типа
       //то нужно будет менять в двух местах, а может и больше.
       //Поменять здесь и в других местах, где идёт присвоение типов.
-      adress.adressType = "REG";
+      adress.adressType = AddressType.REG.name();
       adress.street = clientToSave.rAdressStreet;
       adress.house = clientToSave.rAdressHouse;
       adress.flat = clientToSave.rAdressFlat;
@@ -126,7 +118,7 @@ public class ClientRegisterImpl implements ClientRegister {
       Adress adress = new Adress();
       adress.id = Integer.parseInt(String.valueOf(clientToSave.id) + "002");
       adress.clientID = clientToSave.id;
-      adress.adressType = "FACT";
+      adress.adressType = AddressType.FACT.name();
       adress.street = clientToSave.fAdressStreet;
       adress.house = clientToSave.fAdressHouse;
       adress.flat = clientToSave.fAdressFlat;
@@ -247,7 +239,7 @@ public class ClientRegisterImpl implements ClientRegister {
   private float getMinCash(int clientID) {
     Float minCash;
 
-    minCash = accountDao.get().getTotalCash(clientID);
+    minCash = accountDao.get().getMinCash(clientID);
 
     if (minCash == null) minCash = (float) 0;
 
@@ -257,7 +249,7 @@ public class ClientRegisterImpl implements ClientRegister {
   private float getMaxCash(int clientID) {
     Float maxCash;
 
-    maxCash = accountDao.get().getTotalCash(clientID);
+    maxCash = accountDao.get().getMaxCash(clientID);
 
     if (maxCash == null) maxCash = (float) 0;
 
@@ -291,7 +283,7 @@ public class ClientRegisterImpl implements ClientRegister {
     String filterStr = clientsListReportParams.filterSortParams.filterStr;
     String sortBy = clientsListReportParams.filterSortParams.sortBy;
     String sortOrder = clientsListReportParams.filterSortParams.sortOrder;
-    jdbcSandbox.get().execute(new TestJdbc(username, clientsListReportView, filterStr, sortBy, sortOrder));
+    jdbcSandbox.get().execute(new ReportJdbc(username, clientsListReportView, filterStr, sortBy, sortOrder));
   }
 
   @Override

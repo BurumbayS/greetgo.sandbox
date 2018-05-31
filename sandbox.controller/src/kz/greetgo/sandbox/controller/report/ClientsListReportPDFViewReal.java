@@ -23,19 +23,20 @@ public class ClientsListReportPDFViewReal implements ClientsListReportView {
   BaseFont bf = null;
   Font font;
 
-  public ClientsListReportPDFViewReal(OutputStream outf) {
+  public ClientsListReportPDFViewReal(OutputStream outf) throws DocumentException {
     pdf_report = new Document(PageSize.A4.rotate());
     try {
       PdfWriter.getInstance(pdf_report, outf);
-    } catch (DocumentException e) {
-      e.printStackTrace();//TODO За это надо казнить. Сильно КАЗНИТЬ!!!!
+    } catch (Exception e) {
+      if (e instanceof RuntimeException) throw (RuntimeException) e;
+      throw (DocumentException) e;
+      //TODO За это надо казнить. Сильно КАЗНИТЬ!!!!
+//      e.printStackTrace();
     }
 
     try {
       bf = BaseFont.createFont("kz/greetgo/sandbox/controller/report/Fonts/arial.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
-    } catch (DocumentException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
+    } catch (DocumentException | IOException e) {
       e.printStackTrace();
     }
     font = new Font(bf, 12);
@@ -56,7 +57,7 @@ public class ClientsListReportPDFViewReal implements ClientsListReportView {
       e.printStackTrace();
     }
 
-    float[] columnWidths = {2, 10, 10, 10, 10, 10, 10};
+    float[] columnWidths = {3, 10, 10, 10, 10, 10, 10};
     table = new PdfPTable(columnWidths);
 
     table_cell = new PdfPCell(new Phrase("#", font));
@@ -82,10 +83,10 @@ public class ClientsListReportPDFViewReal implements ClientsListReportView {
   }
 
   @Override
-  // TODO: есди записей будет очень много, то твая реализация сломается
+  // TODO: если записей будет очень много, то твоя реализация сломается
   // посмотри как itext решает проблему с большими данными
   public void append(ClientListRow clientListRow) {
-    float[] columnWidths = {2, 10, 10, 10, 10, 10, 10};
+    float[] columnWidths = {3, 10, 10, 10, 10, 10, 10};
     table = new PdfPTable(columnWidths);
 
     table_cell = new PdfPCell(new Phrase(String.valueOf(clientListRow.no), font));
@@ -135,7 +136,7 @@ public class ClientsListReportPDFViewReal implements ClientsListReportView {
 
     reportView.start("Список клиентов");
 
-    for (int i = 1; i <= 5; i++) {
+    for (int i = 1; i <= 1000000; i++) {
       ClientListRow row = new ClientListRow();
       row.no = i;
       row.fio = "Asdas Aasdas Aasdasd " + i;

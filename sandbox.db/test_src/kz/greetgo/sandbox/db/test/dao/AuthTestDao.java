@@ -21,13 +21,13 @@ public interface AuthTestDao {
 
   @Insert("insert into Person (id, accountName, encryptedPassword, blocked) " +
     "values (#{id}, #{accountName}, #{encryptedPassword}, #{blocked})")
-  void insertUser(@Param("cia_id") String id,
+  void insertUser(@Param("id") String id,
                   @Param("accountName") String accountName,
                   @Param("encryptedPassword") String encryptedPassword,
                   @Param("blocked") int blocked
   );
 
-  @Update("update Person set ${fieldName} = #{fieldValue} where cia_id = #{id}")
+  @Update("update Person set ${fieldName} = #{fieldValue} where id = #{id}")
   void updatePersonField(@Param("id") String id,
                          @Param("fieldName") String fieldName,
                          @Param("fieldValue") Object fieldValue);

@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 //TODO Назвать класс правильно
-public class TestJdbc implements ConnectionCallback<Void> {
+// Done
+public class ReportJdbc implements ConnectionCallback<Void> {
 
   private String username;
   private ClientsListReportView view;
@@ -27,7 +28,7 @@ public class TestJdbc implements ConnectionCallback<Void> {
   private Connection connection;
 
 
-  public TestJdbc(String username, ClientsListReportView clientsListReportView, String filterStr, String sortBy, String sortOrder) {
+  public ReportJdbc(String username, ClientsListReportView clientsListReportView, String filterStr, String sortBy, String sortOrder) {
     this.username = username;
     this.view = clientsListReportView;
     this.filterStr = "%" + filterStr + "%";
@@ -117,15 +118,11 @@ public class TestJdbc implements ConnectionCallback<Void> {
     }
 
     if ("up".equals(sortOrder)) {
-      if ("age".equals(sortBy)) {
-        sql.append("DESC");
-      } else if (!"fio".equals(sortBy)) {
+      if (!"fio".equals(sortBy)) {
         sql.append("ASC");
       }
     } else if ("down".equals(sortOrder)) {
-      if ("age".equals(sortBy)) {
-        sql.append("ASC");
-      } else if (!"fio".equals(sortBy)) {
+      if (!"fio".equals(sortBy)) {
         sql.append("DESC");
       }
     }
@@ -154,7 +151,7 @@ public class TestJdbc implements ConnectionCallback<Void> {
       }
 
       try (ResultSet rs = ps.executeQuery()) {
-        while (rs.next()) {//TODO так не пойдёт.
+        if (rs.next()) {//TODO так не пойдёт. Done
           return rs.getString(1);
         }
       }

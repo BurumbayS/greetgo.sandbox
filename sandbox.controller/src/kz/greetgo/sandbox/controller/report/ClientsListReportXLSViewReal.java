@@ -10,13 +10,14 @@ import java.io.OutputStream;
 import java.util.Date;
 
 // TODO: Переименуй, не понятно что за вьюшка
-public class ClientsListReportViewReal implements ClientsListReportView {
+// Done
+public class ClientsListReportXLSViewReal implements ClientsListReportView {
 
   private final OutputStream out;
   private Xlsx xlsx;
   private Sheet sheet;
 
-  public ClientsListReportViewReal(OutputStream out) {
+  public ClientsListReportXLSViewReal(OutputStream out) {
     this.out = out;
   }
 
@@ -80,10 +81,11 @@ public class ClientsListReportViewReal implements ClientsListReportView {
     String home = System.getProperty("user.home");
 
     //TODO: проставь адрес относительный. Пусть файл лежит в самом проекте !!!
-    File file = new File(home + "/Downloads/report.xlsx");
+    // Done
+    File file = new File("build/out_files/test.xlsx");
     OutputStream outf = new FileOutputStream(file);
 
-    ClientsListReportViewReal reportView = new ClientsListReportViewReal(outf);
+    ClientsListReportXLSViewReal reportView = new ClientsListReportXLSViewReal(outf);
 
     reportView.start("Список клиентов");
 

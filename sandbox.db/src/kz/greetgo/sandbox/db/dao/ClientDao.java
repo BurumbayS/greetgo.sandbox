@@ -12,17 +12,17 @@ public interface ClientDao {
             "patronymic like #{substr}")
     List<Client> getFilteredClients(@Param("substr") String substr);
 
-    @Select("Select * from clients where cia_id = #{clientID}")
+    @Select("Select * from clients where id = #{clientID}")
     Client getClient(@Param("clientID") int clientID);
 
     //Плохой запрос, при больших нагрузках система не выдержит
-    @Delete("Delete from clients CASCADE where cia_id = #{clientID}")
+    @Delete("Delete from clients CASCADE where id = #{clientID}")
     void removeClient(@Param("clientID") int clientID);
 
-    @Insert("insert into clients (cia_id, surname, name, patronymic, gender, birth_date, charm_id) " +
-            "values (#{cia_id}, #{surname}, #{name}, #{patronymic}, #{gender}, #{birth_date}, #{charm_id}) " +
-            "on conflict (cia_id) do update " +
-            "set cia_id = #{cia_id}, surname = #{surname}, name = #{name}, patronymic = #{patronymic}," +
+    @Insert("insert into clients (id, surname, name, patronymic, gender, birth_date, charm_id) " +
+            "values (#{id}, #{surname}, #{name}, #{patronymic}, #{gender}, #{birth_date}, #{charm_id}) " +
+            "on conflict (id) do update " +
+            "set id = #{id}, surname = #{surname}, name = #{name}, patronymic = #{patronymic}," +
             "gender = #{gender}, birth_date = #{birth_date}, charm_id = #{charm_id}")
     void insertClient(Client client);
 }

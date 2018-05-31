@@ -20,8 +20,6 @@ public class Migration implements Closeable {
   public Migration(Connection connection) {
     this.connection = connection;
 
-//    SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
-//    Date nowDate = new Date();
     tmpClientTable = "cia_migration_client_";
     tmpPhoneTable = "cia_migration_phone_";
     tmpAccountTable = "frs_migration_account_";
@@ -85,8 +83,36 @@ public class Migration implements Closeable {
   private String tmpClientTable, tmpPhoneTable;
   private String tmpAccountTable, tmpTransactionTable;
 
-  public int migrate() throws Exception {
+  public int execute () throws Exception {
     long startedAt = System.nanoTime();
+
+    int portionSize = downloadFromCIA();
+
+    {
+      long now = System.nanoTime();
+      info("Downloaded of portion " + portionSize + " from CIA finished for " + showTime(now, startedAt));
+    }
+
+    portionSize += downloadFromFRS();
+
+    {
+      long now = System.nanoTime();
+      info("Downloaded of portion " + portionSize + " from FRS finished for " + showTime(now, startedAt));
+    }
+
+    if (portionSize == 0) return 0;
+
+    migrateFromTmp();
+
+    {
+      long now = System.nanoTime();
+      info("Migration of portion " + portionSize + " finished for " + showTime(now, startedAt));
+    }
+
+    return portionSize;
+  }
+
+  public void migrate() throws Exception {
 
     //language=PostgreSQL
     exec("create table TMP_CLIENT (\n" +
@@ -150,30 +176,6 @@ public class Migration implements Closeable {
       "  transaction_type_id bigint\n" +
       ")");
 
-//    int portionSize = downloadFromCIA();
-
-    {
-      long now = System.nanoTime();
-      info("Downloaded of portion " + portionSize + " from CIA finished for " + showTime(now, startedAt));
-    }
-
-//    portionSize = downloadFromFRS();
-
-    {
-      long now = System.nanoTime();
-      info("Downloaded of portion " + portionSize + " from FRS finished for " + showTime(now, startedAt));
-    }
-
-    if (portionSize == 0) return 0;
-
-//    migrateFromTmp();
-
-    {
-      long now = System.nanoTime();
-      info("Migration of portion " + portionSize + " finished for " + showTime(now, startedAt));
-    }
-
-    return portionSize;
   }
 
   public int downloadFromCIA() throws SQLException, IOException, SAXException {
