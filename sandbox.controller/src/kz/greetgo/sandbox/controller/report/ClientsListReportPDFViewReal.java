@@ -30,8 +30,6 @@ public class ClientsListReportPDFViewReal implements ClientsListReportView {
     } catch (Exception e) {
       if (e instanceof RuntimeException) throw (RuntimeException) e;
       throw (DocumentException) e;
-      //TODO За это надо казнить. Сильно КАЗНИТЬ!!!!
-//      e.printStackTrace();
     }
 
     try {
@@ -83,8 +81,6 @@ public class ClientsListReportPDFViewReal implements ClientsListReportView {
   }
 
   @Override
-  // TODO: если записей будет очень много, то твоя реализация сломается
-  // посмотри как itext решает проблему с большими данными
   public void append(ClientListRow clientListRow) {
     float[] columnWidths = {3, 10, 10, 10, 10, 10, 10};
     table = new PdfPTable(columnWidths);

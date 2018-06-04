@@ -31,8 +31,6 @@ public class ClientDot {
     return clientDetails;
   }
 
-  //TODO методы должны быть с малого регистра
-  // Done
   public int countAge() {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
     Date date = new Date();
