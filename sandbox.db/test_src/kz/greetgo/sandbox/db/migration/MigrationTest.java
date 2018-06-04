@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -40,7 +41,11 @@ public class MigrationTest extends ParentTestNg {
       "password"
     );
 
-    migration = new Migration(connection);
+    List<String> frsFiles = new ArrayList<>();
+    List<String> ciaFiles = new ArrayList<>();
+    ciaFiles.add("build/out_files/from_cia_2018-02-21-154535-4-100000.xml");
+    frsFiles.add("build/out_files/from_frs_2018-02-21-155113-2-700001.json_row.txt");
+    migration = new Migration(connection, frsFiles, ciaFiles);
   }
 
   @Test
@@ -49,7 +54,7 @@ public class MigrationTest extends ParentTestNg {
 
     //
     //
-    migration.migrate();
+    migration.createTmpTables();
     //
     //
 
@@ -75,7 +80,7 @@ public class MigrationTest extends ParentTestNg {
     List<ClientXMLRecord> clientXMLRecords = null;
 
     try {
-      File inputFile = new File("build/out_files/from_cia_2018-05-24-095644-2-3000.xml");
+      File inputFile = new File("build/out_files/from_cia_2018-02-21-154535-4-100000.xml");
 
       FromXMLParser fromXMLParser = new FromXMLParser();
       fromXMLParser.execute(connection, null, null, 0);
@@ -88,7 +93,7 @@ public class MigrationTest extends ParentTestNg {
 
     //
     //
-    int recordsCount = migration.downloadFromCIA();
+    int recordsCount = migration.downloadFromCIA("build/out_files/from_cia_2018-02-21-154535-4-100000.xml");
     //
     //
 
@@ -142,7 +147,7 @@ public class MigrationTest extends ParentTestNg {
     List<TransactionJSONRecord> transactionJSONRecords = null;
     List<AccountJSONRecord> accountJSONRecords = null;
     try {
-      File inputFile = new File("build/out_files/from_frs_2018-05-24-095714-1-30005.json_row.txt");
+      File inputFile = new File("build/out_files/from_frs_2018-02-21-155113-2-700001.json_row.txt");
 
       FromJSONParser fromJSONParser = new FromJSONParser();
       fromJSONParser.execute(connection, null, null, 0);
@@ -157,7 +162,7 @@ public class MigrationTest extends ParentTestNg {
 
     //
     //
-    int recordsCount = migration.downloadFromFRS();
+    int recordsCount = migration.downloadFromFRS("build/out_files/from_frs_2018-02-21-155113-2-700001.json_row.txt");
     //
     //
 
