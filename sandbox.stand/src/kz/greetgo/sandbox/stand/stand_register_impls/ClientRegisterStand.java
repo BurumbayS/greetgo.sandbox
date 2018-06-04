@@ -6,7 +6,6 @@ import kz.greetgo.sandbox.controller.model.*;
 import kz.greetgo.sandbox.controller.register.ClientRegister;
 import kz.greetgo.sandbox.db.stand.beans.StandDb;
 import kz.greetgo.sandbox.db.stand.model.*;
-import kz.greetgo.util.RND;
 
 import java.util.*;
 
@@ -202,7 +201,7 @@ public class ClientRegisterStand  implements ClientRegister{
         ClientRecord clientInfo = new ClientRecord();
         clientInfo.id = client.id;
         clientInfo.fio = client.name + " " + client.patronymic + " " + client.surname;
-        clientInfo.age = client.CountAge();
+        clientInfo.age = client.countAge();
         clientInfo.totalCash = getTotalCash(client.id);
         clientInfo.maxCash = getMaxCash(client.id);
         clientInfo.minCash = getMinCash(client.id);

@@ -5,6 +5,7 @@ import java.util.List;
 
 public class ClientXMLRecord {
     public long number;
+    public String cia_id;
     public String id;
     public String surname, name, patronymic;
     public String charm, gender;

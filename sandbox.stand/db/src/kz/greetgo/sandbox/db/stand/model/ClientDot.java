@@ -32,7 +32,8 @@ public class ClientDot {
   }
 
   //TODO методы должны быть с малого регистра
-  public int CountAge() {
+  // Done
+  public int countAge() {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
     Date date = new Date();
     long diffInMillies = Math.abs(date.getTime() - birth_date.getTime());

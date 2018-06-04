@@ -596,7 +596,7 @@ public class GenerateInputFiles {
         info.appendGoodClientId(clientId);
       }
 
-      pr.println("  <client id=\"" + clientId + "\"> <!-- " + clientIndex + " -->");
+      pr.println("  <client cia_id=\"" + clientId + "\"> <!-- " + clientIndex + " -->");
       tags.forEach(pr::println);
       pr.println("  </client>");
     }

@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.sql.*;
 
-public class LaunchMigration extends ParentTestNg{
+public class LaunchMigration {
     static Connection connection;
 
     private static void createConnection() throws Exception{
@@ -39,7 +39,7 @@ public class LaunchMigration extends ParentTestNg{
             migration.downloadMaxBatchSize = 50_000;
 
             while (true) {
-                int count = migration.migrate();
+                int count = migration.execute();
                 if (count == 0) break;
                 if (count > 0) break;
                 if (!file.exists()) break;
