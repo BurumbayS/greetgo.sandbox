@@ -112,6 +112,7 @@ public class Migration implements Closeable {
     return portionSize;
   }
 
+  //TODO: назови метод по-другому, несовсем понятно, что он делает
   public void migrate() throws Exception {
 
     //language=PostgreSQL

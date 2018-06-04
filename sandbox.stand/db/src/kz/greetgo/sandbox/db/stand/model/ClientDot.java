@@ -39,7 +39,6 @@ public class ClientDot {
 
     int years = (int) (diff / 365);
 
-
     return years;
   }
 }
