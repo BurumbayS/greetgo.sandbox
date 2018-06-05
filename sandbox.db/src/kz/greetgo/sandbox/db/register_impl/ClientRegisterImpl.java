@@ -73,11 +73,6 @@ public class ClientRegisterImpl implements ClientRegister {
       Phone newPhone = new Phone();
       newPhone.clientID = clientToSave.id;
       newPhone.number = phone;
-      //TODO: неверное присвоение типов.
-      // Done
-      //Если где-то ещё будет такое же присвоение и программисту нужно будет менять значение типа
-      //то нужно будет менять в двух местах, а может и больше.
-      //Поменять здесь и в других местах, где идёт присвоение типов.
       newPhone.phoneType = PhoneType.MOBILE.name();
       phoneDao.get().insertPhone(newPhone);
     }
@@ -102,11 +97,6 @@ public class ClientRegisterImpl implements ClientRegister {
       Adress adress = new Adress();
       adress.id = Integer.parseInt(String.valueOf(clientToSave.id) + "001");
       adress.clientID = clientToSave.id;
-      //TODO: неверное присвоение типов.
-      // Done
-      //Если где-то ещё будет такое же присвоение и программисту нужно будет менять значение типа
-      //то нужно будет менять в двух местах, а может и больше.
-      //Поменять здесь и в других местах, где идёт присвоение типов.
       adress.adressType = AddressType.REG.name();
       adress.street = clientToSave.rAdressStreet;
       adress.house = clientToSave.rAdressHouse;

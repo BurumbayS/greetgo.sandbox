@@ -80,15 +80,10 @@ public class ClientRegisterImplTest extends ParentTestNg {
     //
     //
 
-//    assertThat(false).isTrue();
-    //TODO есть специально для такого случая что-то типа такого
-    //Done
     Assertions.fail("Incorrect form filling");
   }
 
   @Test
-  //TODO: исправить тест
-  //Done
   public void testAddNewClient() throws Exception {
     clientTestDao.get().clearClients();
     charmTestDao.get().clearCharms();
@@ -251,8 +246,6 @@ public class ClientRegisterImplTest extends ParentTestNg {
     assertThat(clients).hasSize(0);
   }
 
-  @Test//TODO имя теста тоже надо корректировать
-  //Done
   public void testGetClientDetails() throws Exception {
     clientTestDao.get().clearClients();
     charmTestDao.get().clearCharms();
@@ -354,16 +347,12 @@ public class ClientRegisterImplTest extends ParentTestNg {
     }
   }
 
-  //TODO: нет сортировки по убыванию
-  //Done
   @Test
   public void testMiddlePageSortedByAgeDown() throws Exception {
     clientTestDao.get().clearClients();
     charmTestDao.get().clearCharms();
     accountTestDao.get().clearAccounts();
 
-    //TODO тесты не должны зависеть от стэнда
-    //Done
     List<CharmDot> charms = genCharms();
 
     List<ClientDot> clientDots = genClients();
