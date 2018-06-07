@@ -5,4 +5,5 @@ import kz.greetgo.depinject.core.BeanScanner;
 
 @BeanConfig
 @BeanScanner
+//TODO: переименуй на подходящее название
 public class BeanConfigControllers {}

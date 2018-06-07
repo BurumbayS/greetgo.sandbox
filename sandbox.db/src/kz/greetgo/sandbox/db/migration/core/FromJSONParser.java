@@ -5,11 +5,11 @@ import kz.greetgo.sandbox.db.migration.model.TransactionJSONRecord;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +55,11 @@ public class FromJSONParser {
           transactionJSONRecord.money = Float.valueOf(money);
           transactionJSONRecord.account_number = obj.getString("account_number");
           String tstmp = obj.getString("finished_at");
+          //TODO: в этом параметре хранится дата в международном формате ISO
+          //помимо Т в конце могут добавлятся другие символы относительно локали (региона)
+          //поэтому это не верное решение, просто заменять символ Т. Вот пример 2011-08-12T20:17:46.384Z
+          //Z - 'zero time zone' or 'Zulu time'
+          //Найди другое решение для парсинга времени
           tstmp = tstmp.replaceAll("T", " ");
           transactionJSONRecord.finished_at = Timestamp.valueOf(tstmp);
           transactionJSONRecord.transaction_type = obj.getString("transaction_type");
@@ -70,6 +75,11 @@ public class FromJSONParser {
 
           accountJSONRecord.account_number = obj.getString("account_number");
           String tstmp = obj.getString("registered_at");
+          //TODO: в этом параметре хранится дата в международном формате ISO
+          //помимо Т в конце могут добавлятся другие символы относительно локали (региона)
+          //поэтому это не верное решение, просто заменять символ Т. Вот пример 2011-08-12T20:17:46.384Z
+          //Z - 'zero time zone' or 'Zulu time'
+          //Найди другое решение для парсинга времени
           tstmp = tstmp.replaceAll("T", " ");
           accountJSONRecord.registered_at = Timestamp.valueOf(tstmp);
           accountJSONRecord.client_id = obj.getString("client_id");

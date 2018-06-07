@@ -11,8 +11,8 @@ import kz.greetgo.mvc.annotations.Mapping;
 import kz.greetgo.sandbox.controller.report.MigrationSQLReport;
 import kz.greetgo.sandbox.controller.security.NoSecurity;
 import kz.greetgo.sandbox.controller.util.Controller;
-import kz.greetgo.sandbox.db.configs.DbConfig;
 import kz.greetgo.sandbox.db.configs.CIA_SSHConfig;
+import kz.greetgo.sandbox.db.configs.DbConfig;
 import kz.greetgo.sandbox.db.configs.FRS_SSHConfig;
 import kz.greetgo.sandbox.db.util.App;
 import kz.greetgo.util.RND;
@@ -21,14 +21,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.utils.IOUtils;
 
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -43,7 +36,7 @@ import java.util.Vector;
 //TODO: контроллер миграции отличается от контроллеров типа (ClientController).
 // Контроллер миграции включает бизнес логику. Тебе нужно создать ещё один контроллер в модуле Controller (где лежит ClientController)
 // и перенести туда маппинг
-public class MigrationController implements Controller, Closeable{
+public class MigrationController implements Controller, Closeable {
 
   public BeanGetter<DbConfig> postgresDbConfig;
   public BeanGetter<CIA_SSHConfig> cia_SSHConfig;
@@ -125,13 +118,14 @@ public class MigrationController implements Controller, Closeable{
   private boolean migrateFromCia() throws Exception {
     String remoteDir = cia_SSHConfig.get().dir();
 
+    //TODO: Не разъеденил и не вышел с подключения
     ChannelSftp sftpChannel = (ChannelSftp) cia_session.openChannel("sftp");
     sftpChannel.connect();
 
     String path = remoteDir + "/*xml.tar.bz2";
     Vector<ChannelSftp.LsEntry> files = sftpChannel.ls(path);
 
-    if (files.size() < 1) { return  false; }
+    if (files.size() < 1) { return false; }
 
     String str = RND.str(5);
     path = remoteDir + "/" + files.get(0).getFilename();
@@ -141,7 +135,9 @@ public class MigrationController implements Controller, Closeable{
 
     path = remoteDir + "/" + file.getFilename() + str;
 
+    //TODO: не закрыт
     InputStream in = sftpChannel.get(path);
+    //TODO: не закрыт
     BZip2CompressorInputStream bzin = new BZip2CompressorInputStream(in);
 
     File out = new File("/Users/sanzharburumbay/Documents/Greetgo_Internship/greetgo.sandbox");
@@ -162,6 +158,7 @@ public class MigrationController implements Controller, Closeable{
 //    sftpChannel.put(fis, f.getName());
 //    OutputStream reportOuts = sftpChannel.put(remoteDir + "/sqlReport.xlsx");
     File fl = new File(App.appDir() + "/errors.txt");
+    //TODO: не закрыт
     FileOutputStream errorOut = new FileOutputStream(fl);
 
     try (TarArchiveInputStream fin = new TarArchiveInputStream(bzin)) {
@@ -199,7 +196,7 @@ public class MigrationController implements Controller, Closeable{
     String path = remoteDir + "/*txt.tar.bz2";
     Vector<ChannelSftp.LsEntry> files = sftpChannel.ls(path);
 
-    if (files.size() < 1) { return  false; }
+    if (files.size() < 1) { return false; }
 
     String str = RND.str(5);
     path = remoteDir + "/" + files.get(0).getFilename();
@@ -251,8 +248,11 @@ public class MigrationController implements Controller, Closeable{
     return false;
   }
 
-  private void generateSQLReport(Map<String,String> sqlRequests, String fileName) throws Exception{
+  private void generateSQLReport(Map<String, String> sqlRequests, String fileName) throws Exception {
     File file = new File(App.appDir() + "/" + fileName);
+
+    //TODO: не закрыт стрим. В билетах есть решение как правильно заркывать
+    //Посмотри try-with-resources
     FileOutputStream out = new FileOutputStream(file);
 
     MigrationSQLReport report = new MigrationSQLReport(out);
@@ -262,7 +262,7 @@ public class MigrationController implements Controller, Closeable{
     List<String> keys = new ArrayList<>();
     List<String> values = new ArrayList<>();
 
-    for(String key : sqlRequests.keySet()) {
+    for (String key : sqlRequests.keySet()) {
       keys.add(key);
       values.add(sqlRequests.get(key));
     }
