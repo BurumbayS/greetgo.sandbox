@@ -9,8 +9,6 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.Date;
 
-// TODO: Переименуй, не понятно что за вьюшка
-// Done
 public class ClientsListReportXLSViewReal implements ClientsListReportView {
 
   private final OutputStream out;
@@ -76,12 +74,9 @@ public class ClientsListReportXLSViewReal implements ClientsListReportView {
     xlsx.complete(out);
   }
 
-  //TODO Проверить работу в MS Office
   public static void main(String args[]) throws Exception {
     String home = System.getProperty("user.home");
 
-    //TODO: проставь адрес относительный. Пусть файл лежит в самом проекте !!!
-    // Done
     File file = new File("build/out_files/test.xlsx");
     OutputStream outf = new FileOutputStream(file);
 

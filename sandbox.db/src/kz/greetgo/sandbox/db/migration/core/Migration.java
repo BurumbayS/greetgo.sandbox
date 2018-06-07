@@ -137,7 +137,6 @@ public class Migration implements Closeable {
   }
 
   public void createTmpTables() throws Exception {
-
     //language=PostgreSQL
     exec("CREATE TABLE TMP_CLIENT (\n" +
       "  client_id VARCHAR(20),\n" +

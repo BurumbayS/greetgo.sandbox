@@ -14,8 +14,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-//TODO Назвать класс правильно
-// Done
 public class ReportJdbc implements ConnectionCallback<Void> {
 
   private String username;
@@ -151,7 +149,7 @@ public class ReportJdbc implements ConnectionCallback<Void> {
       }
 
       try (ResultSet rs = ps.executeQuery()) {
-        if (rs.next()) {//TODO так не пойдёт. Done
+        if (rs.next()) {
           return rs.getString(1);
         }
       }
