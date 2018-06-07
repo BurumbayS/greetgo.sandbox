@@ -1,10 +1,8 @@
 package kz.greetgo.sandbox.db.migration;
 
 import kz.greetgo.depinject.core.BeanGetter;
-import kz.greetgo.sandbox.controller.model.Client;
 import kz.greetgo.sandbox.db.migration.core.FromJSONParser;
 import kz.greetgo.sandbox.db.migration.core.FromXMLParser;
-import kz.greetgo.sandbox.db.migration.core.Migration;
 import kz.greetgo.sandbox.db.migration.core.MigrationWorkerCIA;
 import kz.greetgo.sandbox.db.migration.core.MigrationWorkerFRS;
 import kz.greetgo.sandbox.db.migration.model.AccountJSONRecord;
@@ -17,16 +15,13 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 import static org.fest.assertions.api.Assertions.assertThat;
 
@@ -51,8 +46,8 @@ public class MigrationTest extends ParentTestNg {
     File ciaFile = new File("build/out_files/from_cia_2018-02-21-154532-1-300.xml");
     File frsFile = new File("build/out_files/from_frs_2018-02-21-154543-1-30009.json_row.txt");
 
-    migrationWorkerCIA = new MigrationWorkerCIA(connection, new FileInputStream(ciaFile), null, MAX_BATCH_SIZE);
-    migrationWorkerFRS = new MigrationWorkerFRS(connection, new FileInputStream(frsFile), null, MAX_BATCH_SIZE);
+    migrationWorkerCIA = new MigrationWorkerCIA(connection, new FileInputStream(ciaFile), MAX_BATCH_SIZE);
+    migrationWorkerFRS = new MigrationWorkerFRS(connection, new FileInputStream(frsFile), MAX_BATCH_SIZE);
   }
 
   @Test
@@ -338,18 +333,7 @@ public class MigrationTest extends ParentTestNg {
         transactionJSONRecords.remove(cnt);
 
         continue;
-      } else {
-        Integer accountID = migrationTestDao.get().getAccountID(transactionJSONRecord.account_number);
-
-        if (accountID == null) {
-          Integer status = migrationTestDao.get().getCiaTransactionStatus((long) i + 1);
-          assertThat(status).isEqualTo(1);
-
-          transactionJSONRecords.remove(cnt);
-        } else {
-          cnt++;
-        }
-      }
+      } else { cnt++; }
     }
   }
 

@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
+@SuppressWarnings("Duplicates")
 @Bean
 @Mapping("/migration")
 //TODO: контроллер миграции отличается от контроллеров типа (ClientController).
@@ -330,7 +331,7 @@ public class MigrationControllerYodaMasterClass implements Controller, Closeable
 
         InputStream inputStream = new FileInputStream(frsFile);
 
-        MigrationWorkerFRS migrationWorkerFRS = new MigrationWorkerFRS(connection, inputStream, errorOut, MAX_BATH_SIZE);
+        MigrationWorkerFRS migrationWorkerFRS = new MigrationWorkerFRS(connection, inputStream, MAX_BATH_SIZE);
         migrationWorkerFRS.migrate();
 
         generateSQLReport(migrationWorkerFRS.getSqlRequests(), "FrsSqlRequests.xlsx");

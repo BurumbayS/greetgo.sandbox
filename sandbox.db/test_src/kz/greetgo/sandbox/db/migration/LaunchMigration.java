@@ -4,22 +4,15 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import kz.greetgo.sandbox.db.migration.core.Migration;
 import kz.greetgo.util.RND;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.utils.IOUtils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -134,24 +127,24 @@ public class LaunchMigration {
     System.out.println("To stop next migration portion delete file " + file);
     System.out.println("To stop next migration portion delete file " + file);
 
-    try (Migration migration = new Migration(connection, frsFilePath, ciaFilePath)) {
-
-      migration.portionSize = 10_000_000;
-      migration.uploadMaxBatchSize = 80_000;
-      migration.downloadMaxBatchSize = 80_000;
-
-      while (true) {
-        int count = migration.execute();
-        if (count == 0) break;
-        if (count > 0) break;
-        if (!file.exists()) break;
-        System.out.println("Migrated " + count + " records");
-        System.out.println("------------------------------------------------------------------");
-        System.out.println("------------------------------------------------------------------");
-        System.out.println("------------------------------------------------------------------");
-        System.out.println("------------------------------------------------------------------");
-      }
-    }
+//    try (Migration migration = new Migration(connection, frsFilePath, ciaFilePath)) {
+//
+//      migration.portionSize = 10_000_000;
+//      migration.uploadMaxBatchSize = 80_000;
+//      migration.downloadMaxBatchSize = 80_000;
+//
+//      while (true) {
+//        int count = migration.execute();
+//        if (count == 0) break;
+//        if (count > 0) break;
+//        if (!file.exists()) break;
+//        System.out.println("Migrated " + count + " records");
+//        System.out.println("------------------------------------------------------------------");
+//        System.out.println("------------------------------------------------------------------");
+//        System.out.println("------------------------------------------------------------------");
+//        System.out.println("------------------------------------------------------------------");
+//      }
+//    }
 
     file.delete();
 

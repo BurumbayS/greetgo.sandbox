@@ -8,6 +8,7 @@ import kz.greetgo.depinject.core.Bean;
 import kz.greetgo.depinject.core.BeanGetter;
 import kz.greetgo.mvc.annotations.AsIs;
 import kz.greetgo.mvc.annotations.Mapping;
+import kz.greetgo.sandbox.controller.register.MigrationRegister;
 import kz.greetgo.sandbox.controller.report.MigrationSQLReport;
 import kz.greetgo.sandbox.controller.security.NoSecurity;
 import kz.greetgo.sandbox.controller.util.Controller;
@@ -31,12 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
+
 @Bean
-@Mapping("/migration")
 //TODO: контроллер миграции отличается от контроллеров типа (ClientController).
 // Контроллер миграции включает бизнес логику. Тебе нужно создать ещё один контроллер в модуле Controller (где лежит ClientController)
 // и перенести туда маппинг
-public class MigrationController implements Controller, Closeable {
+public class MigrationController {
 
   public BeanGetter<DbConfig> postgresDbConfig;
   public BeanGetter<CIA_SSHConfig> cia_SSHConfig;
@@ -86,9 +87,6 @@ public class MigrationController implements Controller, Closeable {
     }
   }
 
-  @AsIs
-  @NoSecurity
-  @Mapping("")
   public void runMigration() throws Exception {
     createDbConnection();
 
@@ -140,26 +138,7 @@ public class MigrationController implements Controller, Closeable {
     //TODO: не закрыт
     BZip2CompressorInputStream bzin = new BZip2CompressorInputStream(in);
 
-    File out = new File("/Users/sanzharburumbay/Documents/Greetgo_Internship/greetgo.sandbox");
-
-//    String dir = remoteDir.substring(0, remoteDir.length() - 4);
-//    Vector<ChannelSftp.LsEntry> fls = sftpChannel.ls(dir + "/CiaError*");
-//    if (fls.size() == 0) {
-//      sftpChannel.mkdir(dir + "/CiaErrors");
-//    }
-//    OutputStream errorOutStream = sftpChannel.put(dir + "/CiaErrors/errors.txt");
-//    OutputStreamWriter errorWriter = new OutputStreamWriter(errorOutStream);
-//    errorWriter.write("Hello");
-//    errorWriter.close();
-
-//    sftpChannel.cd(remoteDir);
-//    File f = new File("test.xlsx");
-//    FileInputStream fis = new FileInputStream(f);
-//    sftpChannel.put(fis, f.getName());
-//    OutputStream reportOuts = sftpChannel.put(remoteDir + "/sqlReport.xlsx");
-    File fl = new File(App.appDir() + "/errors.txt");
-    //TODO: не закрыт
-    FileOutputStream errorOut = new FileOutputStream(fl);
+    File out = new File(App.appDir());
 
     try (TarArchiveInputStream fin = new TarArchiveInputStream(bzin)) {
 
@@ -175,7 +154,7 @@ public class MigrationController implements Controller, Closeable {
 
         InputStream inputStream = new FileInputStream(ciaFile);
 
-        MigrationWorkerCIA migrationWorkerCIA = new MigrationWorkerCIA(connection, inputStream, errorOut, MAX_BATH_SIZE);
+        MigrationWorkerCIA migrationWorkerCIA = new MigrationWorkerCIA(connection, inputStream, MAX_BATH_SIZE);
         migrationWorkerCIA.migrate();
 
         generateSQLReport(migrationWorkerCIA.getSqlRequests(), "CiaSqlRequests.xlsx");
@@ -183,6 +162,11 @@ public class MigrationController implements Controller, Closeable {
         return true;
       }
     }
+
+    in.close();
+    bzin.close();
+
+    sftpChannel.disconnect();
 
     return false;
   }
@@ -209,18 +193,7 @@ public class MigrationController implements Controller, Closeable {
     InputStream in = sftpChannel.get(path);
     BZip2CompressorInputStream bzin = new BZip2CompressorInputStream(in);
 
-    File out = new File("/Users/sanzharburumbay/Documents/Greetgo_Internship/greetgo.sandbox");
-
-//    sftpChannel.mkdir(remoteDir.substring(0, remoteDir.length() - 4) + "/FrsErrors");
-//    OutputStream errorOutStream = sftpChannel.put(remoteDir.substring(0, remoteDir.length() - 4) + "/FrsErrors/errors.txt");
-//    OutputStreamWriter errorWriter = new OutputStreamWriter(errorOutStream);
-//    errorWriter.write("Hello");
-//    errorWriter.close();
-
-//    OutputStream reportOuts = sftpChannel.put(remoteDir + "/sqlReport.xlsx");
-
-    File fl = new File(App.appDir() + "/errors.txt");
-    FileOutputStream errorOut = new FileOutputStream(fl);
+    File out = new File(App.appDir());
 
     try (TarArchiveInputStream fin = new TarArchiveInputStream(bzin)) {
 
@@ -236,7 +209,7 @@ public class MigrationController implements Controller, Closeable {
 
         InputStream inputStream = new FileInputStream(frsFile);
 
-        MigrationWorkerFRS migrationWorkerFRS = new MigrationWorkerFRS(connection, inputStream, errorOut, MAX_BATH_SIZE);
+        MigrationWorkerFRS migrationWorkerFRS = new MigrationWorkerFRS(connection, inputStream, MAX_BATH_SIZE);
         migrationWorkerFRS.migrate();
 
         generateSQLReport(migrationWorkerFRS.getSqlRequests(), "FrsSqlRequests.xlsx");
@@ -244,6 +217,11 @@ public class MigrationController implements Controller, Closeable {
         return true;
       }
     }
+
+    in.close();
+    bzin.close();
+
+    sftpChannel.disconnect();
 
     return false;
   }
@@ -253,45 +231,24 @@ public class MigrationController implements Controller, Closeable {
 
     //TODO: не закрыт стрим. В билетах есть решение как правильно заркывать
     //Посмотри try-with-resources
-    FileOutputStream out = new FileOutputStream(file);
+    try (FileOutputStream out = new FileOutputStream(file)) {
+      MigrationSQLReport report = new MigrationSQLReport(out);
 
-    MigrationSQLReport report = new MigrationSQLReport(out);
+      report.start("Список SQL запросов");
 
-    report.start("Список SQL запросов");
+      List<String> keys = new ArrayList<>();
+      List<String> values = new ArrayList<>();
 
-    List<String> keys = new ArrayList<>();
-    List<String> values = new ArrayList<>();
-
-    for (String key : sqlRequests.keySet()) {
-      keys.add(key);
-      values.add(sqlRequests.get(key));
-    }
-
-    for (int i = sqlRequests.size() - 1; i >= 0; i--) {
-      report.append(sqlRequests.size() - i, values.get(i), keys.get(i));
-    }
-
-    report.finish();
-  }
-
-  @Override
-  public void close() throws IOException {
-    cia_session.disconnect();
-    frs_session.disconnect();
-
-    if (this.connection != null) {
-      try {
-        this.connection.close();
-      } catch (SQLException e) {
-        e.printStackTrace();
+      for (String key : sqlRequests.keySet()) {
+        keys.add(key);
+        values.add(sqlRequests.get(key));
       }
-      this.connection = null;
-    }
 
-    try {
-      deleteTables();
-    } catch (Exception e) {
-      e.printStackTrace();
+      for (int i = sqlRequests.size() - 1; i >= 0; i--) {
+        report.append(sqlRequests.size() - i, values.get(i), keys.get(i));
+      }
+
+      report.finish();
     }
   }
 

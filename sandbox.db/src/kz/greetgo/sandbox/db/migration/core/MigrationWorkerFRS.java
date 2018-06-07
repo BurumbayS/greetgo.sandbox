@@ -9,63 +9,26 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Map;
-import java.util.TreeMap;
 
-import static kz.greetgo.sandbox.db.migration.util.TimeUtils.showTime;
+public class MigrationWorkerFRS extends MigrationWorker{
 
-public class MigrationWorkerFRS {
-
-  private Connection connection;
-  private InputStream inputSream;
-  private OutputStream errorOutStream;
+  private InputStream inputStream;
+//  private OutputStream errorOutStream;
 
   private int batchSize = 0;
-  private int recordsCount = 0;
 
   private String tmpAccountTable, tmpTransactionTable;
 
-  private Map<String , String> sqlRequests = new TreeMap<>();
-
-  private void info(String message) {
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-    System.out.println(sdf.format(new Date()) + " [" + getClass().getSimpleName() + "] " + message);
-  }
-
-  private String r(String sql) {
+  public String r(String sql) {
     sql = sql.replaceAll("TMP_ACCOUNT", tmpAccountTable);
     sql = sql.replaceAll("TMP_TRANSACTION", tmpTransactionTable);
     return sql;
   }
 
-  private void exec(String sql) throws SQLException {
-    String executingSql = r(sql);
-
-    long startedAt = System.nanoTime();
-
-    try (Statement statement = connection.createStatement()) {
-      int updates = statement.executeUpdate(executingSql);
-      info("Updated " + updates
-        + " records for " + showTime(System.nanoTime(), startedAt)
-        + ", EXECUTED SQL : " + executingSql);
-    } catch (SQLException e) {
-      info("ERROR EXECUTE SQL for " + showTime(System.nanoTime(), startedAt)
-        + ", message: " + e.getMessage() + ", SQL : " + executingSql);
-      throw e;
-    }
-
-    sqlRequests.put(showTime(System.nanoTime(), startedAt), sql);
-  }
-
-  public MigrationWorkerFRS(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) {
+  public MigrationWorkerFRS(Connection connection, InputStream inputStream, int batchSize) {
     this.connection = connection;
-    this.inputSream = inputSream;
-    this.errorOutStream = errorOutStream;
+    this.inputStream = inputStream;
+//    this.errorOutStream = errorOutStream;
     this.batchSize = batchSize;
 
     tmpAccountTable = "frs_migration_account_";
@@ -136,7 +99,7 @@ public class MigrationWorkerFRS {
         FromJSONParser fromJSONParser = new FromJSONParser();
         fromJSONParser.execute(connection, accountPS, transPS, batchSize);
 
-        recordsCount = fromJSONParser.parseRecordData(inputSream);
+        recordsCount = fromJSONParser.parseRecordData(inputStream);
 
         if (fromJSONParser.getAccBatchSize() > 0 || fromJSONParser.getTransBatchSize() > 0) {
           accountPS.executeBatch();
@@ -150,6 +113,7 @@ public class MigrationWorkerFRS {
     }
   }
 
+  @SuppressWarnings("SqlResolve")
   public void verification() throws Exception {
     //language=PostgreSQL
     exec("UPDATE TMP_TRANSACTION SET error = 'transaction type is not defined', status = 1\n" +
@@ -170,8 +134,18 @@ public class MigrationWorkerFRS {
       "WHERE tmp.client_cia_id = c.cia_id AND tmp.status = 0");
 
     //language=PostgreSQL
-    exec("UPDATE TMP_ACCOUNT SET status = 1\n" +
+    exec("UPDATE TMP_ACCOUNT SET status = 1, error = 'client_id is not defined'\n" +
       "WHERE client_id IS NULL AND status = 0");
+  }
+
+  @SuppressWarnings("SqlResolve")
+  public void migrateFromTmp() throws Exception {
+
+    //language=PostgreSQL
+    exec("INSERT INTO tmp_accounts (number, registered_at, client_id)\n" +
+      "SELECT account_number, registered_at, client_id \n" +
+      "FROM TMP_ACCOUNT tmp\n" +
+      "WHERE tmp.client_id IS NOT NULL AND tmp.status = 0");
 
     //language=PostgreSQL
     exec("INSERT INTO tmp_transaction_types (name)\n" +
@@ -191,71 +165,27 @@ public class MigrationWorkerFRS {
       "WHERE tmp.account_number = acc.number AND tmp.status = 0");
 
     //language=PostgreSQL
-    exec("UPDATE TMP_TRANSACTION tmp SET account_id = acc.id\n" +
-      "FROM TMP_ACCOUNT acc\n" +
-      "WHERE tmp.account_number = acc.account_number AND tmp.status = 0 AND acc.status = 0");
-
-    //language=PostgreSQL
-    exec("UPDATE TMP_TRANSACTION SET status = 1\n" +
+    exec("UPDATE TMP_TRANSACTION SET status = 1, error = 'account id is not defined'\n" +
       "WHERE account_id IS NULL AND status = 0");
-
-    uploadErrors();
-  }
-
-  public void migrateFromTmp() throws Exception {
-
-    //language=PostgreSQL
-    exec("INSERT INTO tmp_accounts (number, registered_at, client_id)\n" +
-      "SELECT account_number, registered_at, client_id \n" +
-      "FROM TMP_ACCOUNT tmp\n" +
-      "WHERE tmp.client_id IS NOT NULL AND tmp.status = 0");
 
     //language=PostgreSQL
     exec("INSERT INTO tmp_transactions (money, finished_at, account_id, transaction_type_id)\n" +
       "SELECT money, finished_at, account_id, transaction_type_id \n" +
       "FROM TMP_TRANSACTION tmp\n" +
       "WHERE tmp.status = 0");
+
+    uploadErrorsToFile();
   }
 
-  private void uploadErrors() throws Exception {
+  private void uploadErrorsToFile() throws Exception {
+
     File file = new File(App.appDir() + "/frsErrors.txt");
-    OutputStream out = new FileOutputStream(file);
-    OutputStreamWriter writer = new OutputStreamWriter(out);
 
-    String sql = "select line, error from TMP_TRANSACTION where status = 1";
-    uploadErrorsFromDB(sql, writer);
-
-    sql = "select line, error from TMP_ACCOUNT where status = 1";
-    uploadErrorsFromDB(sql, writer);
-
-    writer.close();
-  }
-  private void uploadErrorsFromDB(String sql, OutputStreamWriter writer) throws Exception{
-    try (PreparedStatement ps = connection.prepareStatement(r(sql))) {
-
-      try (ResultSet rs = ps.executeQuery()) {
-
-        int cnt = 0;
-        while (rs.next()) {
-          StringBuilder stringBuilder = new StringBuilder();
-          stringBuilder.append(cnt);
-          stringBuilder.append(". Line: ");
-          stringBuilder.append(rs.getLong("line"));
-          stringBuilder.append("    Error: ");
-          stringBuilder.append(rs.getString("error"));
-          stringBuilder.append("\n");
-
-          writer.write(stringBuilder.toString());
-        }
+    try(OutputStream out = new FileOutputStream(file)) {
+      try(OutputStreamWriter writer = new OutputStreamWriter(out)) {
+        uploadErrors("TMP_TRANSACTION", writer);
+        uploadErrors("TMP_ACCOUNT", writer);
       }
     }
-  }
-
-  public Map<String,String> getSqlRequests() {
-    return sqlRequests;
-  }
-
-  public int getRecordsCount() {
-    return recordsCount;
   }
 }

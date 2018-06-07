@@ -1,74 +1,35 @@
 package kz.greetgo.sandbox.db.migration.core;
 
-import kz.greetgo.sandbox.controller.report.model.ClientListRow;
 import kz.greetgo.sandbox.db.util.App;
 
-import java.io.Closeable;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Map;
-import java.util.TreeMap;
 
-import static kz.greetgo.sandbox.db.migration.util.TimeUtils.showTime;
 
-public class MigrationWorkerCIA {
-  private Connection connection;
-  private InputStream inputSream;
-  private OutputStream errorOutStream;
+public class MigrationWorkerCIA extends MigrationWorker{
+
+  private InputStream inputStream;
+//  private OutputStream errorOutStream;
 
   private int batchSize = 0;
-  private int recordsCount = 0;
 
   private String tmpClientTable, tmpPhoneTable;
 
-  private Map<String , String> sqlRequests = new TreeMap<>();
-
-  private void info(String message) {
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-    System.out.println(sdf.format(new Date()) + " [" + getClass().getSimpleName() + "] " + message);
-  }
-
-  private String r(String sql) {
+  public String r(String sql) {
     sql = sql.replaceAll("TMP_CLIENT", tmpClientTable);
     sql = sql.replaceAll("TMP_PHONE", tmpPhoneTable);
     return sql;
   }
 
-  private void exec(String sql) throws SQLException {
-    String executingSql = r(sql);
-
-    long startedAt = System.nanoTime();
-
-    try (Statement statement = connection.createStatement()) {
-      int updates = statement.executeUpdate(executingSql);
-      info("Updated " + updates
-        + " records for " + showTime(System.nanoTime(), startedAt)
-        + ", EXECUTED SQL : " + executingSql);
-    } catch (SQLException e) {
-      info("ERROR EXECUTE SQL for " + showTime(System.nanoTime(), startedAt)
-        + ", message: " + e.getMessage() + ", SQL : " + executingSql);
-      throw e;
-    }
-
-    sqlRequests.put(showTime(System.nanoTime(), startedAt), sql);
-  }
-
-  public MigrationWorkerCIA(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) {
+  public MigrationWorkerCIA(Connection connection, InputStream inputStream, int batchSize) {
     this.connection = connection;
-    this.inputSream = inputSream;
-    this.errorOutStream = errorOutStream;
+    this.inputStream = inputStream;
+//    this.errorOutStream = errorOutStream;
     this.batchSize = batchSize;
 
     tmpClientTable = "cia_migration_client_";
@@ -162,7 +123,7 @@ public class MigrationWorkerCIA {
         FromXMLParser fromXMLParser = new FromXMLParser();
         fromXMLParser.execute(connection, clientPS, phonePS, batchSize);
 
-        recordsCount = fromXMLParser.parseRecordData(inputSream);
+        recordsCount = fromXMLParser.parseRecordData(inputStream);
 
         if (fromXMLParser.getClientBatchSize() > 0 || fromXMLParser.getPhoneBatchSize() > 0) {
           phonePS.executeBatch();
@@ -177,6 +138,7 @@ public class MigrationWorkerCIA {
     }
   }
 
+  @SuppressWarnings("SqlResolve")
   public void verification() throws Exception{
     //language=PostgreSQL
     exec("UPDATE TMP_CLIENT SET error = 'surname is not defined', status = 1\n" +
@@ -201,7 +163,7 @@ public class MigrationWorkerCIA {
     exec("UPDATE TMP_PHONE ph SET status = 1" +
       " FROM TMP_CLIENT cl WHERE cl.id = ph.tmp_client_id AND cl.status = 1");
 
-    uploadErrors();
+    uploadErrorsToFile();
 
     //language=PostgreSQL
     exec("WITH num_ord AS (\n" +
@@ -238,6 +200,17 @@ public class MigrationWorkerCIA {
       " AND (cl.status = 0 OR cl.status = 3)");
   }
 
+  private void uploadErrorsToFile() throws Exception {
+    File file = new File(App.appDir() + "/ciaErrors.txt");
+
+    try(OutputStream out = new FileOutputStream(file)) {
+      try(OutputStreamWriter writer = new OutputStreamWriter(out)) {
+        uploadErrors("TMP_CLIENT", writer);
+      }
+    }
+  }
+
+  @SuppressWarnings("SqlResolve")
   public void migrateFromTmp() throws Exception{
 
     //language=PostgreSQL
@@ -296,41 +269,4 @@ public class MigrationWorkerCIA {
       "FROM TMP_CLIENT cl \n" +
       "WHERE cl.status = 3 AND cl.rStreet IS NOT NULL AND cl.rHouse IS NOT NULL AND cl.rFlat IS NOT NULL");
   }
-
-  private void uploadErrors() throws Exception {
-    String sql = "select line, error from TMP_CLIENT where status = 1";
-    try (PreparedStatement ps = connection.prepareStatement(r(sql))) {
-
-      try (ResultSet rs = ps.executeQuery()) {
-
-        File file = new File(App.appDir() + "/ciaErrors.txt");
-        OutputStream out = new FileOutputStream(file);
-        OutputStreamWriter writer = new OutputStreamWriter(out);
-
-        int cnt = 0;
-        while (rs.next()) {
-          StringBuilder stringBuilder = new StringBuilder();
-          stringBuilder.append(cnt);
-          stringBuilder.append(". Line: ");
-          stringBuilder.append(rs.getLong("line"));
-          stringBuilder.append("    Error: ");
-          stringBuilder.append(rs.getString("error"));
-          stringBuilder.append("\n");
-
-          writer.write(stringBuilder.toString());
-        }
-
-        writer.close();
-      }
-    }
-  }
-
-  public Map<String, String> getSqlRequests() {
-    return sqlRequests;
-  }
-
-  public int getRecordsCount () {
-    return recordsCount;
-  }
-
 }

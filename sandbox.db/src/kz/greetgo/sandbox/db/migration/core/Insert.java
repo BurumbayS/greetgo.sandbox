@@ -8,7 +8,7 @@ public class Insert {
   private final String tableName;
 
   //TODO: не надобности в объявлении статичного класса
-  private static class InsertElement {
+  private class InsertElement {
     final String name, value;
 
     public InsertElement(String name, String value) {

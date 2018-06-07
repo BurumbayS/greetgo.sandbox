@@ -2,6 +2,7 @@ package kz.greetgo.sandbox.db.migration.core;
 
 import kz.greetgo.sandbox.db.migration.model.AccountJSONRecord;
 import kz.greetgo.sandbox.db.migration.model.TransactionJSONRecord;
+import net.sf.cglib.core.Local;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -10,6 +11,7 @@ import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,8 +82,11 @@ public class FromJSONParser {
           //поэтому это не верное решение, просто заменять символ Т. Вот пример 2011-08-12T20:17:46.384Z
           //Z - 'zero time zone' or 'Zulu time'
           //Найди другое решение для парсинга времени
+
+          LocalDateTime dateTime = LocalDateTime.parse(tstmp);
+
           tstmp = tstmp.replaceAll("T", " ");
-          accountJSONRecord.registered_at = Timestamp.valueOf(tstmp);
+          accountJSONRecord.registered_at = Timestamp.valueOf(dateTime);
           accountJSONRecord.client_id = obj.getString("client_id");
 
           if (accPS != null) {
