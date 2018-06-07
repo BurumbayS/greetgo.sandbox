@@ -5,6 +5,8 @@ import kz.greetgo.sandbox.controller.model.Client;
 import kz.greetgo.sandbox.db.migration.core.FromJSONParser;
 import kz.greetgo.sandbox.db.migration.core.FromXMLParser;
 import kz.greetgo.sandbox.db.migration.core.Migration;
+import kz.greetgo.sandbox.db.migration.core.MigrationWorkerCIA;
+import kz.greetgo.sandbox.db.migration.core.MigrationWorkerFRS;
 import kz.greetgo.sandbox.db.migration.model.AccountJSONRecord;
 import kz.greetgo.sandbox.db.migration.model.ClientXMLRecord;
 import kz.greetgo.sandbox.db.migration.model.TransactionJSONRecord;
@@ -15,6 +17,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -22,6 +26,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import static org.fest.assertions.api.Assertions.assertThat;
 
@@ -29,8 +34,10 @@ public class MigrationTest extends ParentTestNg {
   public BeanGetter<MigrationTestDao> migrationTestDao;
 
   Connection connection;
-  Migration migration;
+  MigrationWorkerCIA migrationWorkerCIA;
+  MigrationWorkerFRS migrationWorkerFRS;
 
+  final int MAX_BATCH_SIZE = 70_000;
 
   @BeforeTest
   private void createConnection() throws Exception {
@@ -41,11 +48,11 @@ public class MigrationTest extends ParentTestNg {
       "password"
     );
 
-    List<String> frsFiles = new ArrayList<>();
-    List<String> ciaFiles = new ArrayList<>();
-    ciaFiles.add("build/out_files/from_cia_2018-02-21-154535-4-100000.xml");
-    frsFiles.add("build/out_files/from_frs_2018-02-21-155113-2-700001.json_row.txt");
-    migration = new Migration(connection, frsFiles, ciaFiles);
+    File ciaFile = new File("build/out_files/from_cia_2018-02-21-154532-1-300.xml");
+    File frsFile = new File("build/out_files/from_frs_2018-02-21-154543-1-30009.json_row.txt");
+
+    migrationWorkerCIA = new MigrationWorkerCIA(connection, new FileInputStream(ciaFile), null, MAX_BATCH_SIZE);
+    migrationWorkerFRS = new MigrationWorkerFRS(connection, new FileInputStream(frsFile), null, MAX_BATCH_SIZE);
   }
 
   @Test
@@ -54,7 +61,8 @@ public class MigrationTest extends ParentTestNg {
 
     //
     //
-    migration.createTmpTables();
+    migrationWorkerCIA.createTmpTables();
+    migrationWorkerFRS.createTmpTables();
     //
     //
 
@@ -73,18 +81,17 @@ public class MigrationTest extends ParentTestNg {
 
   @Test
   public void TestDownloadFromCIA() throws Exception {
-
     this.clearCIATables();
 
     int expectedRecordsCount = 0;
     List<ClientXMLRecord> clientXMLRecords = null;
 
     try {
-      File inputFile = new File("build/out_files/from_cia_2018-02-21-154535-4-100000.xml");
+      File inputFile = new File("build/out_files/from_cia_2018-02-21-154532-1-300.xml");
 
       FromXMLParser fromXMLParser = new FromXMLParser();
       fromXMLParser.execute(connection, null, null, 0);
-//      expectedRecordsCount = fromXMLParser.parseRecordData(String.valueOf(inputFile));
+      expectedRecordsCount = fromXMLParser.parseRecordData(new FileInputStream(inputFile));
       clientXMLRecords = fromXMLParser.getClientXMLRecords();
 
     } catch (Exception e) {
@@ -93,9 +100,11 @@ public class MigrationTest extends ParentTestNg {
 
     //
     //
-    int recordsCount = migration.downloadFromCIA("build/out_files/from_cia_2018-02-21-154535-4-100000.xml");
+    migrationWorkerCIA.download();
     //
     //
+
+    int recordsCount = migrationWorkerCIA.getRecordsCount();
 
     assertThat(recordsCount).isEqualTo(expectedRecordsCount);
 
@@ -140,18 +149,17 @@ public class MigrationTest extends ParentTestNg {
 
   @Test
   public void TestDownloadFromFRS() throws Exception {
-
     this.clearFRSTables();
 
     int expectedRecordsCount = 0;
     List<TransactionJSONRecord> transactionJSONRecords = null;
     List<AccountJSONRecord> accountJSONRecords = null;
     try {
-      File inputFile = new File("build/out_files/from_frs_2018-02-21-155113-2-700001.json_row.txt");
+      File inputFile = new File("build/out_files/from_frs_2018-02-21-154543-1-30009.json_row.txt");
 
       FromJSONParser fromJSONParser = new FromJSONParser();
       fromJSONParser.execute(connection, null, null, 0);
-//      expectedRecordsCount = fromJSONParser.parseRecordData(inputFile);
+      expectedRecordsCount = fromJSONParser.parseRecordData(new FileInputStream(inputFile));
 
       transactionJSONRecords = fromJSONParser.getTransactionJSONRecords();
       accountJSONRecords = fromJSONParser.getAccountJSONRecords();
@@ -162,10 +170,11 @@ public class MigrationTest extends ParentTestNg {
 
     //
     //
-    int recordsCount = migration.downloadFromFRS("build/out_files/from_frs_2018-02-21-155113-2-700001.json_row.txt");
+    migrationWorkerFRS.download();
     //
     //
 
+    int recordsCount = migrationWorkerFRS.getRecordsCount();
     assertThat(recordsCount).isEqualTo(expectedRecordsCount);
 
     Long cnt = 0L;
@@ -196,36 +205,20 @@ public class MigrationTest extends ParentTestNg {
 
       assertThat(number).isNotZero();
     }
-
   }
 
   @Test
-  public void TestMigrateFromTmp() throws Exception {
-
-    List<TransactionJSONRecord> transactionJSONRecords = null;
-    List<AccountJSONRecord> accountJSONRecords = null;
-    try {
-      File inputFile = new File("build/out_files/from_frs_2018-05-24-095714-1-30005.json_row.txt");
-
-      FromJSONParser fromJSONParser = new FromJSONParser();
-      fromJSONParser.execute(connection, null, null, 0);
-//      fromJSONParser.parseRecordData(inputFile);
-
-      transactionJSONRecords = fromJSONParser.getTransactionJSONRecords();
-      accountJSONRecords = fromJSONParser.getAccountJSONRecords();
-
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+  public void TestCiaVerification() throws Exception {
+    this.clearCIATables();
 
     List<ClientXMLRecord> clientXMLRecords = null;
 
     try {
-      File inputFile = new File("build/out_files/from_cia_2018-05-24-095644-2-3000.xml");
+      File inputFile = new File("build/out_files/from_cia_2018-02-21-154532-1-300.xml");
 
       FromXMLParser fromXMLParser = new FromXMLParser();
       fromXMLParser.execute(connection, null, null, 0);
-//      fromXMLParser.parseRecordData(String.valueOf(inputFile));
+      fromXMLParser.parseRecordData(new FileInputStream(inputFile));
       clientXMLRecords = fromXMLParser.getClientXMLRecords();
 
     } catch (Exception e) {
@@ -234,7 +227,8 @@ public class MigrationTest extends ParentTestNg {
 
     //
     //
-    migration.migrateFromTmp();
+    migrationWorkerCIA.download();
+    migrationWorkerCIA.verification();
     //
     //
 
@@ -256,7 +250,58 @@ public class MigrationTest extends ParentTestNg {
       cnt++;
     }
 
-    cnt = 0; length = accountJSONRecords.size();
+    clientXMLRecords.sort(new Comparator<ClientXMLRecord>() {
+      @Override
+      public int compare(ClientXMLRecord o1, ClientXMLRecord o2) {
+        if (o1.cia_id.equals(o2.cia_id)) {
+          if (o1.number < o2.number) {
+            return 1;
+          } else { return -1; }
+        } else { return o1.cia_id.compareTo(o2.cia_id); }
+      }
+    });
+
+    int i = 1; length = clientXMLRecords.size();
+    for (int j = 1; j < length; j++) {
+      if (clientXMLRecords.get(i - 1).cia_id.equals(clientXMLRecords.get(i).cia_id)) {
+        Integer status = migrationTestDao.get().getCiaClientStatus(clientXMLRecords.get(i).number);
+
+        assertThat(status).isEqualTo(2);
+
+        clientXMLRecords.remove(i);
+
+      } else { i++; }
+    }
+  }
+
+  @Test
+  public void TestFrsVerification() throws Exception {
+    this.clearFRSTables();
+
+    List<TransactionJSONRecord> transactionJSONRecords = null;
+    List<AccountJSONRecord> accountJSONRecords = null;
+    try {
+      File inputFile = new File("build/out_files/from_frs_2018-02-21-154543-1-30009.json_row.txt");
+
+      FromJSONParser fromJSONParser = new FromJSONParser();
+      fromJSONParser.execute(connection, null, null, 0);
+      fromJSONParser.parseRecordData(new FileInputStream(inputFile));
+
+      transactionJSONRecords = fromJSONParser.getTransactionJSONRecords();
+      accountJSONRecords = fromJSONParser.getAccountJSONRecords();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    //
+    //
+    migrationWorkerFRS.download();
+    migrationWorkerFRS.verification();
+    //
+    //
+
+    int cnt = 0, length = accountJSONRecords.size();
     for (int i = 0; i < length; i++) {
       AccountJSONRecord accountJSONRecord = accountJSONRecords.get(cnt);
 
@@ -273,9 +318,6 @@ public class MigrationTest extends ParentTestNg {
         if (clientID == null) {
           Integer status = migrationTestDao.get().getCiaAccountStatus((long) i + 1);
 
-          if (status == 0) {
-            System.out.println("hello");
-          }
           assertThat(status).isEqualTo(1);
 
           accountJSONRecords.remove(cnt);
@@ -308,6 +350,51 @@ public class MigrationTest extends ParentTestNg {
           cnt++;
         }
       }
+    }
+  }
+
+  @Test
+  public void TestMigrateFromCiaTmp() throws Exception {
+    this.clearCIATables();
+
+    List<ClientXMLRecord> clientXMLRecords = null;
+
+    try {
+      File inputFile = new File("build/out_files/from_cia_2018-02-21-154532-1-300.xml");
+
+      FromXMLParser fromXMLParser = new FromXMLParser();
+      fromXMLParser.execute(connection, null, null, 0);
+      fromXMLParser.parseRecordData(new FileInputStream(inputFile));
+      clientXMLRecords = fromXMLParser.getClientXMLRecords();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    //
+    //
+    migrationWorkerCIA.download();
+    migrationWorkerCIA.verification();
+    migrationWorkerCIA.migrateFromTmp();
+    //
+    //
+
+    int cnt = 0, length = clientXMLRecords.size();
+    for (int i = 0; i < length; i++) {
+      ClientXMLRecord clientXMLRecord = clientXMLRecords.get(cnt);
+
+      if (clientXMLRecord.name == null || clientXMLRecord.surname == null || clientXMLRecord.birthDate == null ||
+        clientXMLRecord.gender == null || clientXMLRecord.charm == null) {
+        Integer status = migrationTestDao.get().getCiaClientStatus((long) i + 1);
+
+        assertThat(status).isEqualTo(1);
+
+        clientXMLRecords.remove(cnt);
+
+        continue;
+      }
+
+      cnt++;
     }
 
     clientXMLRecords.sort(new Comparator<ClientXMLRecord>() {
@@ -352,6 +439,86 @@ public class MigrationTest extends ParentTestNg {
         String phone_num = migrationTestDao.get().getPhone(phone, "WORK", clientXMLRecord.cia_id);
 
         assertThat(phone_num).isNotNull();
+      }
+    }
+  }
+
+  @Test
+  public void TestMigrateFromFrsTmp() throws Exception {
+    this.clearFRSTables();
+
+    List<TransactionJSONRecord> transactionJSONRecords = null;
+    List<AccountJSONRecord> accountJSONRecords = null;
+    try {
+      File inputFile = new File("build/out_files/from_frs_2018-02-21-154543-1-30009.json_row.txt");
+
+      FromJSONParser fromJSONParser = new FromJSONParser();
+      fromJSONParser.execute(connection, null, null, 0);
+      fromJSONParser.parseRecordData(new FileInputStream(inputFile));
+
+      transactionJSONRecords = fromJSONParser.getTransactionJSONRecords();
+      accountJSONRecords = fromJSONParser.getAccountJSONRecords();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    //
+    //
+    migrationWorkerFRS.download();
+    migrationWorkerFRS.verification();
+    migrationWorkerFRS.migrateFromTmp();
+    //
+    //
+
+    int cnt = 0, length = accountJSONRecords.size();
+    for (int i = 0; i < length; i++) {
+      AccountJSONRecord accountJSONRecord = accountJSONRecords.get(cnt);
+
+      if (accountJSONRecord.client_id == null || accountJSONRecord.account_number == null) {
+        Integer status = migrationTestDao.get().getCiaAccountStatus((long) i + 1);
+        assertThat(status).isEqualTo(1);
+
+        accountJSONRecords.remove(cnt);
+
+        continue;
+      } else {
+        String clientID = migrationTestDao.get().getClientID(accountJSONRecord.client_id);
+
+        if (clientID == null) {
+          Integer status = migrationTestDao.get().getCiaAccountStatus((long) i + 1);
+
+          assertThat(status).isEqualTo(1);
+
+          accountJSONRecords.remove(cnt);
+        } else {
+          cnt++;
+        }
+      }
+    }
+
+    cnt = 0; length = transactionJSONRecords.size();
+    for (int i = 0; i < length; i++) {
+      TransactionJSONRecord transactionJSONRecord = transactionJSONRecords.get(cnt);
+
+      if (transactionJSONRecord.account_number == null || transactionJSONRecord.transaction_type == null) {
+        Integer status = migrationTestDao.get().getCiaTransactionStatus((long) i + 1);
+        assertThat(status).isEqualTo(1);
+
+        transactionJSONRecords.remove(cnt);
+
+        continue;
+      } else {
+        Integer accountID = migrationTestDao.get().getAccountID(transactionJSONRecord.account_number);
+
+        if (accountID == null) {
+          Integer status = migrationTestDao.get().getCiaTransactionStatus((long) i + 1);
+          assertThat(status).isEqualTo(1);
+
+          transactionJSONRecords.remove(cnt);
+        } else {
+          cnt++;
+        }
       }
     }
 

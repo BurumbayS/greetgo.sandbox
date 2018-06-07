@@ -26,6 +26,7 @@ public class MigrationWorkerFRS {
   private OutputStream errorOutStream;
 
   private int batchSize = 0;
+  private int recordsCount = 0;
 
   private String tmpAccountTable, tmpTransactionTable;
 
@@ -61,9 +62,7 @@ public class MigrationWorkerFRS {
     sqlRequests.put(showTime(System.nanoTime(), startedAt), sql);
   }
 
-  public void migrate(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) throws Exception {
-
-    //Вынеси инициализацию в конструктор
+  public MigrationWorkerFRS(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) {
     this.connection = connection;
     this.inputSream = inputSream;
     this.errorOutStream = errorOutStream;
@@ -71,7 +70,9 @@ public class MigrationWorkerFRS {
 
     tmpAccountTable = "frs_migration_account_";
     tmpTransactionTable = "frs_migration_transaction_";
+  }
 
+  public void migrate() throws Exception {
     createTmpTables();
 
     download();
@@ -132,8 +133,6 @@ public class MigrationWorkerFRS {
 
       try (PreparedStatement transPS = connection.prepareStatement(r(transaction_insert.toString()))) {
 
-        int recordsCount = 0;
-
         FromJSONParser fromJSONParser = new FromJSONParser();
         fromJSONParser.execute(connection, accountPS, transPS, batchSize);
 
@@ -144,8 +143,6 @@ public class MigrationWorkerFRS {
           transPS.executeBatch();
           connection.commit();
         }
-
-//        return recordsCount;
       }
 
     } finally {
@@ -167,8 +164,6 @@ public class MigrationWorkerFRS {
     exec("UPDATE TMP_ACCOUNT SET error = 'account number is not defined', status = 1\n" +
       "WHERE error IS NULL AND account_number IS NULL");
 
-    uploadErrors();
-
     //language=PostgreSQL
     exec("UPDATE TMP_ACCOUNT tmp SET client_id = c.id\n" +
       "FROM tmp_clients c\n" +
@@ -177,15 +172,6 @@ public class MigrationWorkerFRS {
     //language=PostgreSQL
     exec("UPDATE TMP_ACCOUNT SET status = 1\n" +
       "WHERE client_id IS NULL AND status = 0");
-  }
-
-  public void migrateFromTmp() throws Exception {
-
-    //language=PostgreSQL
-    exec("INSERT INTO tmp_accounts (number, registered_at, client_id)\n" +
-      "SELECT account_number, registered_at, client_id \n" +
-      "FROM TMP_ACCOUNT tmp\n" +
-      "WHERE tmp.client_id IS NOT NULL AND tmp.status = 0");
 
     //language=PostgreSQL
     exec("INSERT INTO tmp_transaction_types (name)\n" +
@@ -205,8 +191,24 @@ public class MigrationWorkerFRS {
       "WHERE tmp.account_number = acc.number AND tmp.status = 0");
 
     //language=PostgreSQL
+    exec("UPDATE TMP_TRANSACTION tmp SET account_id = acc.id\n" +
+      "FROM TMP_ACCOUNT acc\n" +
+      "WHERE tmp.account_number = acc.account_number AND tmp.status = 0 AND acc.status = 0");
+
+    //language=PostgreSQL
     exec("UPDATE TMP_TRANSACTION SET status = 1\n" +
       "WHERE account_id IS NULL AND status = 0");
+
+    uploadErrors();
+  }
+
+  public void migrateFromTmp() throws Exception {
+
+    //language=PostgreSQL
+    exec("INSERT INTO tmp_accounts (number, registered_at, client_id)\n" +
+      "SELECT account_number, registered_at, client_id \n" +
+      "FROM TMP_ACCOUNT tmp\n" +
+      "WHERE tmp.client_id IS NOT NULL AND tmp.status = 0");
 
     //language=PostgreSQL
     exec("INSERT INTO tmp_transactions (money, finished_at, account_id, transaction_type_id)\n" +
@@ -251,5 +253,9 @@ public class MigrationWorkerFRS {
 
   public Map<String,String> getSqlRequests() {
     return sqlRequests;
+  }
+
+  public int getRecordsCount() {
+    return recordsCount;
   }
 }

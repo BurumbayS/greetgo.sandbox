@@ -3,9 +3,11 @@ package kz.greetgo.sandbox.db.migration.core;
 import kz.greetgo.sandbox.controller.report.model.ClientListRow;
 import kz.greetgo.sandbox.db.util.App;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -63,7 +65,7 @@ public class MigrationWorkerCIA {
     sqlRequests.put(showTime(System.nanoTime(), startedAt), sql);
   }
 
-  public void migrate(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) throws Exception {
+  public MigrationWorkerCIA(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) {
     this.connection = connection;
     this.inputSream = inputSream;
     this.errorOutStream = errorOutStream;
@@ -71,6 +73,9 @@ public class MigrationWorkerCIA {
 
     tmpClientTable = "cia_migration_client_";
     tmpPhoneTable = "cia_migration_phone_";
+  }
+
+  public void migrate() throws Exception {
 
     createTmpTables();
 
@@ -327,4 +332,5 @@ public class MigrationWorkerCIA {
   public int getRecordsCount () {
     return recordsCount;
   }
+
 }
