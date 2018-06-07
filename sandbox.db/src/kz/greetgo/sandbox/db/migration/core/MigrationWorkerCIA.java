@@ -1,59 +1,37 @@
 package kz.greetgo.sandbox.db.migration.core;
 
-import org.xml.sax.SAXException;
+import kz.greetgo.sandbox.controller.report.model.ClientListRow;
+import kz.greetgo.sandbox.db.util.App;
 
-import java.io.Closeable;
 import java.io.File;
-import java.io.IOException;
-import java.sql.*;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static kz.greetgo.sandbox.db.migration.util.TimeUtils.showTime;
 
+public class MigrationWorkerCIA {
+  private Connection connection;
+  private InputStream inputSream;
+  private OutputStream errorOutStream;
 
-public class Migration implements Closeable {
+  private int batchSize = 0;
+  private int recordsCount = 0;
 
-  private Connection connection = null;
-  private List<String> frsFiles;
-  private List<String> ciaFiles;
-  private Map<String, String> sqlRequests = new TreeMap<>();
+  private String tmpClientTable, tmpPhoneTable;
 
-  public Migration(Connection connection, List<String> frsFiles, List<String> ciaFiles) {
-    this.connection = connection;
-    this.frsFiles = frsFiles;
-    this.ciaFiles = ciaFiles;
-
-    tmpClientTable = "cia_migration_client_";
-    tmpPhoneTable = "cia_migration_phone_";
-    tmpAccountTable = "frs_migration_account_";
-    tmpTransactionTable = "frs_migration_transaction_";
-    info("TMP_CLIENT = " + tmpClientTable);
-    info("TMP_PHONE = " + tmpPhoneTable);
-    info("TMP_ACCOUNT = " + tmpAccountTable);
-    info("TMP_TRANSACTION = " + tmpTransactionTable);
-  }
-
-  @Override
-  public void close() {
-    closeOperConnection();
-  }
-
-  private void closeOperConnection() {
-    if (this.connection != null) {
-      try {
-        this.connection.close();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      }
-      this.connection = null;
-    }
-  }
+  private Map<String , String> sqlRequests = new TreeMap<>();
 
   private void info(String message) {
     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
@@ -63,8 +41,6 @@ public class Migration implements Closeable {
   private String r(String sql) {
     sql = sql.replaceAll("TMP_CLIENT", tmpClientTable);
     sql = sql.replaceAll("TMP_PHONE", tmpPhoneTable);
-    sql = sql.replaceAll("TMP_ACCOUNT", tmpAccountTable);
-    sql = sql.replaceAll("TMP_TRANSACTION", tmpTransactionTable);
     return sql;
   }
 
@@ -84,56 +60,25 @@ public class Migration implements Closeable {
       throw e;
     }
 
-    sqlRequests.put(showTime(System.nanoTime(), startedAt), executingSql);
+    sqlRequests.put(showTime(System.nanoTime(), startedAt), sql);
   }
 
-  public int portionSize = 10_000_000;
-  public int downloadMaxBatchSize = 30_000;
-  public int uploadMaxBatchSize = 30_000;
-  public int showStatusPingMillis = 5000;
+  public void migrate(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) throws Exception {
+    this.connection = connection;
+    this.inputSream = inputSream;
+    this.errorOutStream = errorOutStream;
+    this.batchSize = batchSize;
 
-  private String tmpClientTable, tmpPhoneTable;
-  private String tmpAccountTable, tmpTransactionTable;
-
-  public int execute() throws Exception {
-    long startedAt = System.nanoTime();
+    tmpClientTable = "cia_migration_client_";
+    tmpPhoneTable = "cia_migration_phone_";
 
     createTmpTables();
 
-    int portionSize = 0;
+    download();
 
-    for (int i = 0; i < Integer.max(frsFiles.size(), ciaFiles.size()); i++) {
-      if (i < ciaFiles.size()) {
-        portionSize = downloadFromCIA(ciaFiles.get(i));
-        {
-          long now = System.nanoTime();
-          info("Downloaded of portion " + portionSize + " from CIA finished for " + showTime(now, startedAt));
-        }
-      }
-
-      if (i < frsFiles.size()) {
-        portionSize += downloadFromFRS(frsFiles.get(i));
-        {
-          long now = System.nanoTime();
-          info("Downloaded of portion " + portionSize + " from FRS finished for " + showTime(now, startedAt));
-        }
-      }
-    }
+    verification();
 
     migrateFromTmp();
-
-    {
-      long now = System.nanoTime();
-      info("Migration of portion " + portionSize + " finished for " + showTime(now, startedAt));
-    }
-
-    deleteTables();
-
-//    for(String key : sqlRequests.keySet()) {
-//      System.out.print(key + " ");
-//      System.out.println(sqlRequests.get(key));
-//    }
-    return portionSize;
   }
 
   public void createTmpTables() throws Exception {
@@ -143,6 +88,7 @@ public class Migration implements Closeable {
       "  client_id VARCHAR(20),\n" +
       "  status INT NOT NULL DEFAULT 0,\n" +
       "  error VARCHAR(300),\n" +
+      "  line BIGINT,\n" +
       "  \n" +
       "  number BIGSERIAL PRIMARY KEY,\n" +
       "  id VARCHAR(100) NOT NULL,\n" +
@@ -165,6 +111,7 @@ public class Migration implements Closeable {
     exec("CREATE TABLE TMP_PHONE (\n" +
       "  status INT NOT NULL DEFAULT 0,\n" +
       "  error VARCHAR(300),\n" +
+      "  line BIGINT,\n" +
       "  \n" +
       "  num BIGSERIAL PRIMARY KEY,\n" +
       "  cia_id VARCHAR(100) NOT NULL,\n" +
@@ -173,36 +120,9 @@ public class Migration implements Closeable {
       "  phoneType VARCHAR(20),\n" +
       "  client_id VARCHAR(100)\n" +
       ")");
-
-    //language=PostgreSQL
-    exec("CREATE TABLE TMP_ACCOUNT (\n" +
-      "  status INT NOT NULL DEFAULT 0,\n" +
-      "  error VARCHAR(300),\n" +
-      "  \n" +
-      "  number BIGSERIAL PRIMARY KEY,\n" +
-      "  account_number VARCHAR(100),\n" +
-      "  registered_at TIMESTAMP,\n" +
-      "  client_cia_id VARCHAR(100),\n" +
-      "  client_id VARCHAR(100)\n" +
-      ")");
-
-    //language=PostgreSQL
-    exec("CREATE TABLE TMP_TRANSACTION (\n" +
-      "  status INT NOT NULL DEFAULT 0,\n" +
-      "  error VARCHAR(300),\n" +
-      "  \n" +
-      "  number BIGSERIAL PRIMARY KEY,\n" +
-      "  money FLOAT,\n" +
-      "  account_number VARCHAR(100),\n" +
-      "  account_id BIGINT,\n" +
-      "  finished_at TIMESTAMP,\n" +
-      "  transaction_type VARCHAR(300),\n" +
-      "  transaction_type_id BIGINT\n" +
-      ")");
-
   }
 
-  public int downloadFromCIA(String filePath) throws SQLException, IOException, SAXException {
+  public void download() throws Exception {
 
     Insert client_insert = new Insert("TMP_CLIENT");
     client_insert.field(1, "cia_id", "?");
@@ -219,31 +139,25 @@ public class Migration implements Closeable {
     client_insert.field(12, "fStreet", "?");
     client_insert.field(13, "fHouse", "?");
     client_insert.field(14, "fFlat", "?");
+    client_insert.field(15,"line","?");
 
     Insert phone_insert = new Insert("TMP_PHONE");
     phone_insert.field(1, "cia_id", "?");
     phone_insert.field(2, "number", "?");
     phone_insert.field(3, "phoneType", "?");
     phone_insert.field(4, "tmp_client_id", "?");
+    phone_insert.field(5,"line","?");
 
     connection.setAutoCommit(false);
+
     try (PreparedStatement clientPS = connection.prepareStatement(r(client_insert.toString()))) {
 
       try (PreparedStatement phonePS = connection.prepareStatement(r(phone_insert.toString()))) {
 
-        int recordsCount = 0;
-
         FromXMLParser fromXMLParser = new FromXMLParser();
-        fromXMLParser.execute(connection, clientPS, phonePS, downloadMaxBatchSize);
+        fromXMLParser.execute(connection, clientPS, phonePS, batchSize);
 
-        try {
-
-          File inputFile = new File(filePath);
-//          recordsCount = fromXMLParser.parseRecordData(String.valueOf(inputFile));
-
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
+        recordsCount = fromXMLParser.parseRecordData(inputSream);
 
         if (fromXMLParser.getClientBatchSize() > 0 || fromXMLParser.getPhoneBatchSize() > 0) {
           phonePS.executeBatch();
@@ -251,8 +165,6 @@ public class Migration implements Closeable {
           connection.commit();
         }
 
-
-        return recordsCount;
       }
 
     } finally {
@@ -260,56 +172,7 @@ public class Migration implements Closeable {
     }
   }
 
-  public int downloadFromFRS(String filePath) throws SQLException, IOException, SAXException {
-
-    Insert account_insert = new Insert("TMP_ACCOUNT");
-    account_insert.field(1, "account_number", "?");
-    account_insert.field(2, "registered_at", "?");
-    account_insert.field(3, "client_cia_id", "?");
-
-    Insert transaction_insert = new Insert("TMP_TRANSACTION");
-    transaction_insert.field(1, "money", "?");
-    transaction_insert.field(2, "account_number", "?");
-    transaction_insert.field(3, "finished_at", "?");
-    transaction_insert.field(4, "transaction_type", "?");
-
-    connection.setAutoCommit(false);
-    try (PreparedStatement accountPS = connection.prepareStatement(r(account_insert.toString()))) {
-
-      try (PreparedStatement transPS = connection.prepareStatement(r(transaction_insert.toString()))) {
-
-        int recordsCount = 0;
-
-        FromJSONParser fromJSONParser = new FromJSONParser();
-        fromJSONParser.execute(connection, accountPS, transPS, uploadMaxBatchSize);
-
-
-        try {
-
-          File inputFile = new File(filePath);
-//          recordsCount = fromJSONParser.parseRecordData(inputFile);
-
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
-
-        if (fromJSONParser.getAccBatchSize() > 0 || fromJSONParser.getTransBatchSize() > 0) {
-          accountPS.executeBatch();
-          transPS.executeBatch();
-          connection.commit();
-        }
-
-
-        return recordsCount;
-      }
-
-    } finally {
-      connection.setAutoCommit(true);
-    }
-  }
-
-  public void migrateFromTmp() throws Exception {
-
+  public void verification() throws Exception{
     //language=PostgreSQL
     exec("UPDATE TMP_CLIENT SET error = 'surname is not defined', status = 1\n" +
       "WHERE error IS NULL AND surname IS NULL");
@@ -328,22 +191,12 @@ public class Migration implements Closeable {
     //language=PostgreSQL
     exec("UPDATE TMP_PHONE SET error = 'number is not defined', status = 1\n" +
       "WHERE error IS NULL AND number IS NULL");
-    //language=PostgreSQL
-    exec("UPDATE TMP_TRANSACTION SET error = 'transaction type is not defined', status = 1\n" +
-      "WHERE error IS NULL AND transaction_type IS NULL");
-    //language=PostgreSQL
-    exec("UPDATE TMP_TRANSACTION SET error = 'account number is not defined', status = 1\n" +
-      "WHERE error IS NULL AND account_number IS NULL");
-    //language=PostgreSQL
-    exec("UPDATE TMP_ACCOUNT SET error = 'cia_id is not defined', status = 1\n" +
-      "WHERE error IS NULL AND client_cia_id IS NULL");
-    //language=PostgreSQL
-    exec("UPDATE TMP_ACCOUNT SET error = 'account number is not defined', status = 1\n" +
-      "WHERE error IS NULL AND account_number IS NULL");
 
     //language=PostgreSQL
     exec("UPDATE TMP_PHONE ph SET status = 1" +
       " FROM TMP_CLIENT cl WHERE cl.id = ph.tmp_client_id AND cl.status = 1");
+
+    uploadErrors();
 
     //language=PostgreSQL
     exec("WITH num_ord AS (\n" +
@@ -378,6 +231,9 @@ public class Migration implements Closeable {
     exec("UPDATE TMP_PHONE SET client_id = cl.client_id " +
       "FROM TMP_CLIENT cl WHERE cl.client_id IS NOT NULL AND tmp_client_id = cl.id" +
       " AND (cl.status = 0 OR cl.status = 3)");
+  }
+
+  public void migrateFromTmp() throws Exception{
 
     //language=PostgreSQL
     exec("INSERT INTO tmp_clients (id, cia_id, surname, name, patronymic, birth_date, charm, gender)\n" +
@@ -434,81 +290,41 @@ public class Migration implements Closeable {
       "                            adresstype = 'REG'\n" +
       "FROM TMP_CLIENT cl \n" +
       "WHERE cl.status = 3 AND cl.rStreet IS NOT NULL AND cl.rHouse IS NOT NULL AND cl.rFlat IS NOT NULL");
-
-    //language=PostgreSQL
-    exec("UPDATE TMP_ACCOUNT tmp SET client_id = c.id\n" +
-      "FROM tmp_clients c\n" +
-      "WHERE tmp.client_cia_id = c.cia_id AND tmp.status = 0");
-
-    //language=PostgreSQL
-    exec("UPDATE TMP_ACCOUNT SET status = 1\n" +
-      "WHERE client_id IS NULL AND status = 0");
-
-    //language=PostgreSQL
-    exec("INSERT INTO tmp_accounts (number, registered_at, client_id)\n" +
-      "SELECT account_number, registered_at, client_id \n" +
-      "FROM TMP_ACCOUNT tmp\n" +
-      "WHERE tmp.client_id IS NOT NULL AND tmp.status = 0");
-
-    //language=PostgreSQL
-    exec("INSERT INTO tmp_transaction_types (name)\n" +
-      "SELECT transaction_type \n" +
-      "FROM TMP_TRANSACTION tmp\n" +
-      "WHERE tmp.transaction_type NOT IN (SELECT name FROM tmp_transaction_types) AND tmp.status = 0" +
-      "GROUP BY tmp.transaction_type");
-
-    //language=PostgreSQL
-    exec("UPDATE TMP_TRANSACTION tmp SET transaction_type_id = t.id\n" +
-      "FROM tmp_transaction_types t\n" +
-      "WHERE tmp.transaction_type = t.name AND tmp.status = 0");
-
-    //language=PostgreSQL
-    exec("UPDATE TMP_TRANSACTION tmp SET account_id = acc.id\n" +
-      "FROM tmp_accounts acc\n" +
-      "WHERE tmp.account_number = acc.number AND tmp.status = 0");
-
-    //language=PostgreSQL
-    exec("UPDATE TMP_TRANSACTION SET status = 1\n" +
-      "WHERE account_id IS NULL AND status = 0");
-
-    //language=PostgreSQL
-    exec("INSERT INTO tmp_transactions (money, finished_at, account_id, transaction_type_id)\n" +
-      "SELECT money, finished_at, account_id, transaction_type_id \n" +
-      "FROM TMP_TRANSACTION tmp\n" +
-      "WHERE tmp.status = 0");
-
-    //language=PostgreSQL
-    exec("UPDATE tmp_clients SET actual = 1 WHERE id IN (\n" +
-      "  SELECT client_id FROM TMP_CLIENT WHERE status = 0\n" +
-      ")");
   }
 
-  private void deleteTables() throws Exception {
-    String sql = "CREATE OR REPLACE FUNCTION removeTables()\n" +
-      "  RETURNS void\n" +
-      "LANGUAGE plpgsql AS\n" +
-      "$$\n" +
-      "DECLARE row  record;\n" +
-      "BEGIN\n" +
-      "  FOR row IN\n" +
-      "  SELECT\n" +
-      "    table_schema,\n" +
-      "    table_name\n" +
-      "  FROM\n" +
-      "    information_schema.tables\n" +
-      "  WHERE\n" +
-      "    table_name LIKE ('cia_migration%') or\n" +
-      "    table_name LIKE ('frs_migration%')\n" +
-      "  LOOP\n" +
-      "    EXECUTE 'DROP TABLE ' || quote_ident(row.table_schema) || '.' || quote_ident(row.table_name);\n" +
-      "  END LOOP;\n" +
-      "END;\n" +
-      "$$;\n" +
-      "\n" +
-      "select removeTables()";
+  private void uploadErrors() throws Exception {
+    String sql = "select line, error from TMP_CLIENT where status = 1";
+    try (PreparedStatement ps = connection.prepareStatement(r(sql))) {
 
-    try (Statement st = connection.createStatement()) {
-      st.execute(sql);
+      try (ResultSet rs = ps.executeQuery()) {
+
+        File file = new File(App.appDir() + "/ciaErrors.txt");
+        OutputStream out = new FileOutputStream(file);
+        OutputStreamWriter writer = new OutputStreamWriter(out);
+
+        int cnt = 0;
+        while (rs.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          stringBuilder.append(cnt);
+          stringBuilder.append(". Line: ");
+          stringBuilder.append(rs.getLong("line"));
+          stringBuilder.append("    Error: ");
+          stringBuilder.append(rs.getString("error"));
+          stringBuilder.append("\n");
+
+          writer.write(stringBuilder.toString());
+        }
+
+        writer.close();
+      }
     }
+  }
+
+  public Map<String, String> getSqlRequests() {
+    return sqlRequests;
+  }
+
+  public int getRecordsCount () {
+    return recordsCount;
   }
 }

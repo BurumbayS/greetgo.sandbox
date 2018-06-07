@@ -10,6 +10,7 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -27,6 +28,8 @@ public class FromXMLParser extends SaxHandler {
   int clientBatchSize, phoneBatchSize;
   int MAX_BATCH_SIZE;
   int recordsCount;
+  long curClientLine;
+  long curLine = 0;
 
   public void execute(Connection connection, PreparedStatement clientPS, PreparedStatement phonePS, int batchSize) {
     this.connection = connection;
@@ -36,15 +39,15 @@ public class FromXMLParser extends SaxHandler {
     this.clientXMLRecords = new ArrayList<>();
   }
 
-  public int parseRecordData(String recordData) throws SAXException, IOException {
-    if (recordData == null) return 0;
+  public int parseRecordData(InputStream inputStream) throws SAXException, IOException {
+    if (inputStream == null) return 0;
 
     clientXMLRecord = new ClientXMLRecord();
 
     XMLReader reader = XMLReaderFactory.createXMLReader();
     reader.setContentHandler(this);
 
-    reader.parse(new InputSource(recordData));
+    reader.parse(new InputSource(inputStream));
 
     return recordsCount;
   }
@@ -63,30 +66,39 @@ public class FromXMLParser extends SaxHandler {
   protected void startingTag(Attributes attributes) throws Exception {
     String path = path();
     if ("/client".equals(path) || "/cia/client".equals(path)) {
+      curLine++;
+      curClientLine = curLine;
+
       clientXMLRecord.cia_id = attributes.getValue("id");
       return;
     }
     if ("/client/name".equals(path) || "/cia/client/name".equals(path)) {
+      curLine++;
       clientXMLRecord.name = attributes.getValue("value");
       return;
     }
     if ("/client/surname".equals(path) || "/cia/client/surname".equals(path)) {
+      curLine++;
       clientXMLRecord.surname = attributes.getValue("value");
       return;
     }
     if ("/client/patronymic".equals(path) || "/cia/client/patronymic".equals(path)) {
+      curLine++;
       clientXMLRecord.patronymic = attributes.getValue("value");
       return;
     }
     if ("/client/gender".equals(path) || "/cia/client/gender".equals(path)) {
+      curLine++;
       clientXMLRecord.gender = attributes.getValue("value");
       return;
     }
     if ("/client/charm".equals(path) || "/cia/client/charm".equals(path)) {
+      curLine++;
       clientXMLRecord.charm = attributes.getValue("value");
       return;
     }
     if ("/client/birth".equals(path) || "/cia/client/birth".equals(path)) {
+      curLine++;
       try {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         clientXMLRecord.birthDate = new java.sql.Date(sdf.parse(attributes.getValue("value")).getTime());
@@ -127,6 +139,10 @@ public class FromXMLParser extends SaxHandler {
       return;
     }
 
+    if ("/client/address".equals(path) || "/cia/client/address".equals(path)) {
+      curLine += 4;
+    }
+
     if ("/cia/client".equals(path)) {
       clientXMLRecord.id = RND.str(90);
 
@@ -149,6 +165,7 @@ public class FromXMLParser extends SaxHandler {
         clientPS.setString(12, clientXMLRecord.fStreet);
         clientPS.setString(13, clientXMLRecord.fHouse);
         clientPS.setString(14, clientXMLRecord.fFlat);
+        clientPS.setLong(15, curClientLine);
 
         addPhones(clientXMLRecord.homePhones, "HOME");
         addPhones(clientXMLRecord.mobilePhones, "MOBILE");
@@ -178,6 +195,7 @@ public class FromXMLParser extends SaxHandler {
       phonePS.setString(2, phone);
       phonePS.setString(3, phoneType);
       phonePS.setString(4, clientXMLRecord.id);
+      phonePS.setLong(5, curClientLine);
 
       phonePS.addBatch();
       phoneBatchSize++;

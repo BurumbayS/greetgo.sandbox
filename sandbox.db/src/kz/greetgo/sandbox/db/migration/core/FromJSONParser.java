@@ -7,6 +7,8 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +20,7 @@ public class FromJSONParser {
   int accBatchSize, transBatchSize;
   int MAX_BATCH_SIZE;
   int recordsCount = 0;
+  long curLine = 0;
 
   TransactionJSONRecord transactionJSONRecord;
   AccountJSONRecord accountJSONRecord;
@@ -34,17 +37,18 @@ public class FromJSONParser {
     accountJSONRecords = new ArrayList<>();
   }
 
-  public int parseRecordData(File file) throws Exception {
+  public int parseRecordData(InputStream inputStream) throws Exception {
 
     transactionJSONRecord = new TransactionJSONRecord();
     accountJSONRecord = new AccountJSONRecord();
 
-    try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
 
       for (String line; (line = br.readLine()) != null; ) {
         JSONObject obj = new JSONObject(line);
 
         if ("transaction".equals(obj.getString("type"))) {
+          curLine++;
 
           String money = obj.getString("money");
           money = money.replaceAll("_", "");
@@ -62,6 +66,7 @@ public class FromJSONParser {
           transactionJSONRecord = new TransactionJSONRecord();
 
         } else if ("new_account".equals(obj.getString("type"))) {
+          curLine++;
 
           accountJSONRecord.account_number = obj.getString("account_number");
           String tstmp = obj.getString("registered_at");
@@ -99,6 +104,7 @@ public class FromJSONParser {
     this.transPS.setString(2, transactionJSONRecord.account_number);
     this.transPS.setTimestamp(3, transactionJSONRecord.finished_at);
     this.transPS.setString(4, transactionJSONRecord.transaction_type);
+    this.transPS.setLong(5, curLine);
 
     transPS.addBatch();
     transBatchSize++;
@@ -109,6 +115,7 @@ public class FromJSONParser {
     this.accPS.setString(1, accountJSONRecord.account_number);
     this.accPS.setTimestamp(2, accountJSONRecord.registered_at);
     this.accPS.setString(3, accountJSONRecord.client_id);
+    this.accPS.setLong(4, curLine);
 
     accPS.addBatch();
     accBatchSize++;
