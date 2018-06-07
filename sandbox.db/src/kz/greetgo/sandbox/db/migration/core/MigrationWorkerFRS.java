@@ -62,6 +62,8 @@ public class MigrationWorkerFRS {
   }
 
   public void migrate(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) throws Exception {
+
+    //Вынеси инициализацию в конструктор
     this.connection = connection;
     this.inputSream = inputSream;
     this.errorOutStream = errorOutStream;
