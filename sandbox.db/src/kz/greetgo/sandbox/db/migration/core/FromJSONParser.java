@@ -75,6 +75,11 @@ public class FromJSONParser {
 
           accountJSONRecord.account_number = obj.getString("account_number");
           String tstmp = obj.getString("registered_at");
+          //TODO: в этом параметре хранится дата в международном формате ISO
+          //помимо Т в конце могут добавлятся другие символы относительно локали (региона)
+          //поэтому это не верное решение, просто заменять символ Т. Вот пример 2011-08-12T20:17:46.384Z
+          //Z - 'zero time zone' or 'Zulu time'
+          //Найди другое решение для парсинга времени
           tstmp = tstmp.replaceAll("T", " ");
           accountJSONRecord.registered_at = Timestamp.valueOf(tstmp);
           accountJSONRecord.client_id = obj.getString("client_id");
