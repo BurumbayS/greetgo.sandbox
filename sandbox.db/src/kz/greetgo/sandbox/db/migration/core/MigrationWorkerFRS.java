@@ -61,11 +61,14 @@ public class MigrationWorkerFRS {
     sqlRequests.put(showTime(System.nanoTime(), startedAt), sql);
   }
 
-  public void migrate(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) throws Exception {
+  public MigrationWorkerFRS(Connection connection, InputStream inputSream, OutputStream errorOutStream, int batchSize) {
     this.connection = connection;
     this.inputSream = inputSream;
     this.errorOutStream = errorOutStream;
     this.batchSize = batchSize;
+  }
+
+  public void migrate() throws Exception {
 
     tmpAccountTable = "frs_migration_account_";
     tmpTransactionTable = "frs_migration_transaction_";

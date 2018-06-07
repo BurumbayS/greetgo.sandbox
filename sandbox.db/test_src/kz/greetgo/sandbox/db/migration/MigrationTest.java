@@ -5,6 +5,8 @@ import kz.greetgo.sandbox.controller.model.Client;
 import kz.greetgo.sandbox.db.migration.core.FromJSONParser;
 import kz.greetgo.sandbox.db.migration.core.FromXMLParser;
 import kz.greetgo.sandbox.db.migration.core.Migration;
+import kz.greetgo.sandbox.db.migration.core.MigrationWorkerCIA;
+import kz.greetgo.sandbox.db.migration.core.MigrationWorkerFRS;
 import kz.greetgo.sandbox.db.migration.model.AccountJSONRecord;
 import kz.greetgo.sandbox.db.migration.model.ClientXMLRecord;
 import kz.greetgo.sandbox.db.migration.model.TransactionJSONRecord;
@@ -30,6 +32,8 @@ public class MigrationTest extends ParentTestNg {
 
   Connection connection;
   Migration migration;
+  MigrationWorkerCIA migrationWorkerCIA;
+  MigrationWorkerFRS migrationWorkerFRS;
 
 
   @BeforeTest
@@ -45,6 +49,7 @@ public class MigrationTest extends ParentTestNg {
     List<String> ciaFiles = new ArrayList<>();
     ciaFiles.add("build/out_files/from_cia_2018-02-21-154535-4-100000.xml");
     frsFiles.add("build/out_files/from_frs_2018-02-21-155113-2-700001.json_row.txt");
+
     migration = new Migration(connection, frsFiles, ciaFiles);
   }
 

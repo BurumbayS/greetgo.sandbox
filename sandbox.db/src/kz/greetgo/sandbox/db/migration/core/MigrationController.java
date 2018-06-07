@@ -32,6 +32,7 @@ import java.io.OutputStreamWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -174,8 +175,8 @@ public class MigrationController implements Controller, Closeable{
 
         InputStream inputStream = new FileInputStream(ciaFile);
 
-        MigrationWorkerCIA migrationWorkerCIA = new MigrationWorkerCIA();
-        migrationWorkerCIA.migrate(connection, inputStream, errorOut, MAX_BATH_SIZE);
+        MigrationWorkerCIA migrationWorkerCIA = new MigrationWorkerCIA(connection, inputStream, errorOut, MAX_BATH_SIZE);
+        migrationWorkerCIA.migrate();
 
         generateSQLReport(migrationWorkerCIA.getSqlRequests(), "CiaSqlRequests.xlsx");
 
@@ -235,8 +236,8 @@ public class MigrationController implements Controller, Closeable{
 
         InputStream inputStream = new FileInputStream(frsFile);
 
-        MigrationWorkerFRS migrationWorkerFRS = new MigrationWorkerFRS();
-        migrationWorkerFRS.migrate(connection, inputStream, errorOut, MAX_BATH_SIZE);
+        MigrationWorkerFRS migrationWorkerFRS = new MigrationWorkerFRS(connection, inputStream, errorOut, MAX_BATH_SIZE);
+        migrationWorkerFRS.migrate();
 
         generateSQLReport(migrationWorkerFRS.getSqlRequests(), "FrsSqlRequests.xlsx");
 
@@ -282,6 +283,41 @@ public class MigrationController implements Controller, Closeable{
         e.printStackTrace();
       }
       this.connection = null;
+    }
+
+    try {
+      deleteTables();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void deleteTables() throws Exception {
+    String sql = "CREATE OR REPLACE FUNCTION removeTables()\n" +
+      "  RETURNS void\n" +
+      "LANGUAGE plpgsql AS\n" +
+      "$$\n" +
+      "DECLARE row  record;\n" +
+      "BEGIN\n" +
+      "  FOR row IN\n" +
+      "  SELECT\n" +
+      "    table_schema,\n" +
+      "    table_name\n" +
+      "  FROM\n" +
+      "    information_schema.tables\n" +
+      "  WHERE\n" +
+      "    table_name LIKE ('cia_migration%') or\n" +
+      "    table_name LIKE ('frs_migration%')\n" +
+      "  LOOP\n" +
+      "    EXECUTE 'DROP TABLE ' || quote_ident(row.table_schema) || '.' || quote_ident(row.table_name);\n" +
+      "  END LOOP;\n" +
+      "END;\n" +
+      "$$;\n" +
+      "\n" +
+      "select removeTables()";
+
+    try (Statement st = connection.createStatement()) {
+      st.execute(sql);
     }
   }
 }
