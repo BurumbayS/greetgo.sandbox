@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 public class Insert {
   private final String tableName;
 
+  //TODO: не надобности в объявлении статичного класса
   private static class InsertElement {
     final String name, value;
 
