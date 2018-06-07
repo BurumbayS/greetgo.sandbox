@@ -70,12 +70,12 @@ public class MigrationWorkerCIA {
     this.inputSream = inputSream;
     this.errorOutStream = errorOutStream;
     this.batchSize = batchSize;
-  }
-
-  public void migrate() throws Exception {
 
     tmpClientTable = "cia_migration_client_";
     tmpPhoneTable = "cia_migration_phone_";
+  }
+
+  public void migrate() throws Exception {
 
     createTmpTables();
 
