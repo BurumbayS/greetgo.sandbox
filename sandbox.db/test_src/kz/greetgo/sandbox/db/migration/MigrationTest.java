@@ -84,7 +84,7 @@ public class MigrationTest extends ParentTestNg {
 
       FromXMLParser fromXMLParser = new FromXMLParser();
       fromXMLParser.execute(connection, null, null, 0);
-      expectedRecordsCount = fromXMLParser.parseRecordData(String.valueOf(inputFile));
+//      expectedRecordsCount = fromXMLParser.parseRecordData(String.valueOf(inputFile));
       clientXMLRecords = fromXMLParser.getClientXMLRecords();
 
     } catch (Exception e) {
@@ -151,7 +151,7 @@ public class MigrationTest extends ParentTestNg {
 
       FromJSONParser fromJSONParser = new FromJSONParser();
       fromJSONParser.execute(connection, null, null, 0);
-      expectedRecordsCount = fromJSONParser.parseRecordData(inputFile);
+//      expectedRecordsCount = fromJSONParser.parseRecordData(inputFile);
 
       transactionJSONRecords = fromJSONParser.getTransactionJSONRecords();
       accountJSONRecords = fromJSONParser.getAccountJSONRecords();
@@ -209,7 +209,7 @@ public class MigrationTest extends ParentTestNg {
 
       FromJSONParser fromJSONParser = new FromJSONParser();
       fromJSONParser.execute(connection, null, null, 0);
-      fromJSONParser.parseRecordData(inputFile);
+//      fromJSONParser.parseRecordData(inputFile);
 
       transactionJSONRecords = fromJSONParser.getTransactionJSONRecords();
       accountJSONRecords = fromJSONParser.getAccountJSONRecords();
@@ -225,7 +225,7 @@ public class MigrationTest extends ParentTestNg {
 
       FromXMLParser fromXMLParser = new FromXMLParser();
       fromXMLParser.execute(connection, null, null, 0);
-      fromXMLParser.parseRecordData(String.valueOf(inputFile));
+//      fromXMLParser.parseRecordData(String.valueOf(inputFile));
       clientXMLRecords = fromXMLParser.getClientXMLRecords();
 
     } catch (Exception e) {

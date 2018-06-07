@@ -204,26 +204,6 @@ public class Migration implements Closeable {
 
   public int downloadFromCIA(String filePath) throws SQLException, IOException, SAXException {
 
-//    final AtomicBoolean working = new AtomicBoolean(true);
-//    final AtomicBoolean showStatus = new AtomicBoolean(false);
-//
-//    final Thread see = new Thread(() -> {
-//
-//      while (working.get()) {
-//
-//        try {
-//          Thread.sleep(showStatusPingMillis);
-//        } catch (InterruptedException e) {
-//          break;
-//        }
-//
-//        showStatus.set(true);
-//
-//      }
-//
-//    });
-//    see.start();
-
     Insert client_insert = new Insert("TMP_CLIENT");
     client_insert.field(1, "cia_id", "?");
     client_insert.field(2, "surname", "?");
@@ -259,7 +239,7 @@ public class Migration implements Closeable {
         try {
 
           File inputFile = new File(filePath);
-          recordsCount = fromXMLParser.parseRecordData(String.valueOf(inputFile));
+//          recordsCount = fromXMLParser.parseRecordData(String.valueOf(inputFile));
 
         } catch (Exception e) {
           e.printStackTrace();
@@ -277,32 +257,10 @@ public class Migration implements Closeable {
 
     } finally {
       connection.setAutoCommit(true);
-//      working.set(false);
-//      see.interrupt();
     }
   }
 
   public int downloadFromFRS(String filePath) throws SQLException, IOException, SAXException {
-
-//    final AtomicBoolean working = new AtomicBoolean(true);
-//    final AtomicBoolean showStatus = new AtomicBoolean(false);
-//
-//    final Thread see = new Thread(() -> {
-//
-//      while (working.get()) {
-//
-//        try {
-//          Thread.sleep(showStatusPingMillis);
-//        } catch (InterruptedException e) {
-//          break;
-//        }
-//
-//        showStatus.set(true);
-//
-//      }
-//
-//    });
-//    see.start();
 
     Insert account_insert = new Insert("TMP_ACCOUNT");
     account_insert.field(1, "account_number", "?");
@@ -329,7 +287,7 @@ public class Migration implements Closeable {
         try {
 
           File inputFile = new File(filePath);
-          recordsCount = fromJSONParser.parseRecordData(inputFile);
+//          recordsCount = fromJSONParser.parseRecordData(inputFile);
 
         } catch (Exception e) {
           e.printStackTrace();
@@ -347,8 +305,6 @@ public class Migration implements Closeable {
 
     } finally {
       connection.setAutoCommit(true);
-//      working.set(false);
-//      see.interrupt();
     }
   }
 

@@ -11,10 +11,15 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.utils.IOUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,14 +56,23 @@ public class LaunchMigration {
       ChannelSftp sftpChannel = (ChannelSftp) session.openChannel("sftp");
       sftpChannel.connect();
 
-      String path = remoteDir + "/*tar.bz2*";
+      String path = remoteDir + "/CIA/*tar.bz2*";
       Vector<ChannelSftp.LsEntry> files = sftpChannel.ls(path);
 
-//      for(ChannelSftp.LsEntry file : files) {
-//        path = remoteDir + "/" + file.getFilename();
-//        String newPath = path.substring(0, path.length() - 5  );
-//        sftpChannel.rename(path, newPath);
-//      }
+      for(ChannelSftp.LsEntry file : files) {
+        path = remoteDir + "/CIA/" + file.getFilename();
+        String newPath = path.substring(0, path.length() - 5);
+        sftpChannel.rename(path, newPath);
+      }
+
+      String path2 = remoteDir + "/FRS/*tar.bz2*";
+      Vector<ChannelSftp.LsEntry> files2 = sftpChannel.ls(path2);
+
+      for(ChannelSftp.LsEntry file : files2) {
+        path = remoteDir + "/FRS/" + file.getFilename();
+        String newPath = path.substring(0, path.length() - 5);
+        sftpChannel.rename(path, newPath);
+      }
 
       String str = RND.str(5);
       for(ChannelSftp.LsEntry file : files) {

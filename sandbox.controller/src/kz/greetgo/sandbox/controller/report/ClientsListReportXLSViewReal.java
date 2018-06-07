@@ -78,6 +78,7 @@ public class ClientsListReportXLSViewReal implements ClientsListReportView {
     String home = System.getProperty("user.home");
 
     File file = new File("build/out_files/test.xlsx");
+    file.getParentFile().mkdirs();
     OutputStream outf = new FileOutputStream(file);
 
     ClientsListReportXLSViewReal reportView = new ClientsListReportXLSViewReal(outf);
