@@ -41,7 +41,7 @@ import java.util.Vector;
 //TODO: контроллер миграции отличается от контроллеров типа (ClientController).
 // Контроллер миграции включает бизнес логику. Тебе нужно создать ещё один контроллер в модуле Controller (где лежит ClientController)
 // и перенести туда маппинг
-public class MigrationControllerMasterClass implements Controller, Closeable {
+public class MigrationControllerYodaMasterClass implements Controller, Closeable {
 
   public BeanGetter<DbConfig> postgresDbConfig;
   public BeanGetter<CIA_SSHConfig> cia_SSHConfig;
