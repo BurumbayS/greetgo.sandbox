@@ -39,6 +39,9 @@ import java.util.Vector;
 
 @Bean
 @Mapping("/migration")
+//TODO: контроллер миграции отличается от контроллеров типа (ClientController).
+// Контроллер миграции включает бизнес логику. Тебе нужно создать ещё один контроллер в модуле Controller (где лежит ClientController)
+// и перенести туда маппинг
 public class MigrationController implements Controller, Closeable{
 
   public BeanGetter<DbConfig> postgresDbConfig;
