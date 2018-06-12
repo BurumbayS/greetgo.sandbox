@@ -1,9 +1,5 @@
 package kz.greetgo.sandbox.db.migration.core;
 
-import kz.greetgo.sandbox.db.util.App;
-
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -11,10 +7,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 
 
-public class MigrationWorkerCIA extends MigrationWorker{
+public class MigrationWorkerCIA extends MigrationWorker {
 
   private InputStream inputStream;
-//  private OutputStream errorOutStream;
+  private OutputStream errorOutStream;
 
   private int batchSize = 0;
 
@@ -26,10 +22,10 @@ public class MigrationWorkerCIA extends MigrationWorker{
     return sql;
   }
 
-  public MigrationWorkerCIA(Connection connection, InputStream inputStream, int batchSize) {
+  public MigrationWorkerCIA(Connection connection, InputStream inputStream, OutputStream errorOutStream, int batchSize) {
     this.connection = connection;
     this.inputStream = inputStream;
-//    this.errorOutStream = errorOutStream;
+    this.errorOutStream = errorOutStream;
     this.batchSize = batchSize;
 
     tmpClientTable = "cia_migration_client_";
@@ -105,14 +101,14 @@ public class MigrationWorkerCIA extends MigrationWorker{
     client_insert.field(12, "fStreet", "?");
     client_insert.field(13, "fHouse", "?");
     client_insert.field(14, "fFlat", "?");
-    client_insert.field(15,"line","?");
+    client_insert.field(15, "line", "?");
 
     Insert phone_insert = new Insert("TMP_PHONE");
     phone_insert.field(1, "cia_id", "?");
     phone_insert.field(2, "number", "?");
     phone_insert.field(3, "phoneType", "?");
     phone_insert.field(4, "tmp_client_id", "?");
-    phone_insert.field(5,"line","?");
+    phone_insert.field(5, "line", "?");
 
     connection.setAutoCommit(false);
 
@@ -139,7 +135,7 @@ public class MigrationWorkerCIA extends MigrationWorker{
   }
 
   @SuppressWarnings("SqlResolve")
-  public void verification() throws Exception{
+  public void verification() throws Exception {
     //language=PostgreSQL
     exec("UPDATE TMP_CLIENT SET error = 'surname is not defined', status = 1\n" +
       "WHERE error IS NULL AND surname IS NULL");
@@ -201,17 +197,15 @@ public class MigrationWorkerCIA extends MigrationWorker{
   }
 
   private void uploadErrorsToFile() throws Exception {
-    File file = new File(App.appDir() + "/ciaErrors.txt");
 
-    try(OutputStream out = new FileOutputStream(file)) {
-      try(OutputStreamWriter writer = new OutputStreamWriter(out)) {
-        uploadErrors("TMP_CLIENT", writer);
-      }
+    try (OutputStreamWriter writer = new OutputStreamWriter(errorOutStream)) {
+      uploadErrors("TMP_CLIENT", writer);
     }
+
   }
 
   @SuppressWarnings("SqlResolve")
-  public void migrateFromTmp() throws Exception{
+  public void migrateFromTmp() throws Exception {
 
     //language=PostgreSQL
     exec("INSERT INTO tmp_clients (id, cia_id, surname, name, patronymic, birth_date, charm, gender)\n" +

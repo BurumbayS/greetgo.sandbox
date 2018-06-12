@@ -1,5 +1,5 @@
 package kz.greetgo.sandbox.controller.register;
 
-public interface MigrationRegister {
+public interface MigrationControllerInterface {
   void runMigration() throws Exception;
 }

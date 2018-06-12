@@ -46,8 +46,8 @@ public class MigrationTest extends ParentTestNg {
     File ciaFile = new File("build/out_files/from_cia_2018-02-21-154532-1-300.xml");
     File frsFile = new File("build/out_files/from_frs_2018-02-21-154543-1-30009.json_row.txt");
 
-    migrationWorkerCIA = new MigrationWorkerCIA(connection, new FileInputStream(ciaFile), MAX_BATCH_SIZE);
-    migrationWorkerFRS = new MigrationWorkerFRS(connection, new FileInputStream(frsFile), MAX_BATCH_SIZE);
+    migrationWorkerCIA = new MigrationWorkerCIA(connection, new FileInputStream(ciaFile), null, MAX_BATCH_SIZE);
+    migrationWorkerFRS = new MigrationWorkerFRS(connection, new FileInputStream(frsFile), null, MAX_BATCH_SIZE);
   }
 
   @Test

@@ -1,10 +1,10 @@
 package kz.greetgo.sandbox.db.migration.core;
 
+import kz.greetgo.sandbox.controller.report.MigrationSQLReport;
 import kz.greetgo.sandbox.db.util.App;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,7 +12,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -23,7 +25,7 @@ public abstract class MigrationWorker {
 
   int recordsCount = 0;
 
-  Map<String , String> sqlRequests = new TreeMap<>();
+  Map<String, String> sqlRequests = new TreeMap<>();
 
   private void info(String message) {
     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
@@ -74,12 +76,38 @@ public abstract class MigrationWorker {
     }
   }
 
-  public Map<String,String> getSqlRequests() {
+  public Map<String, String> getSqlRequests() {
     return sqlRequests;
   }
 
   public int getRecordsCount() {
     return recordsCount;
+  }
+
+  public File generateSQLReport(String fileName) throws Exception {
+    File file = new File(App.appDir() + "/" + fileName);
+
+    try (FileOutputStream out = new FileOutputStream(file)) {
+      MigrationSQLReport report = new MigrationSQLReport(out);
+
+      report.start("Список SQL запросов");
+
+      List<String> keys = new ArrayList<>();
+      List<String> values = new ArrayList<>();
+
+      for (String key : sqlRequests.keySet()) {
+        keys.add(key);
+        values.add(sqlRequests.get(key));
+      }
+
+      for (int i = sqlRequests.size() - 1; i >= 0; i--) {
+        report.append(sqlRequests.size() - i, values.get(i), keys.get(i));
+      }
+
+      report.finish();
+    }
+
+    return file;
   }
 
 }

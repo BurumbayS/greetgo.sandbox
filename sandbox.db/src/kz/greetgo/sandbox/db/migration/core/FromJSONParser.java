@@ -62,8 +62,8 @@ public class FromJSONParser {
           //поэтому это не верное решение, просто заменять символ Т. Вот пример 2011-08-12T20:17:46.384Z
           //Z - 'zero time zone' or 'Zulu time'
           //Найди другое решение для парсинга времени
-          tstmp = tstmp.replaceAll("T", " ");
-          transactionJSONRecord.finished_at = Timestamp.valueOf(tstmp);
+          LocalDateTime dateTime = LocalDateTime.parse(tstmp);
+          transactionJSONRecord.finished_at = Timestamp.valueOf(dateTime);
           transactionJSONRecord.transaction_type = obj.getString("transaction_type");
 
           if (transPS != null) {
@@ -82,10 +82,7 @@ public class FromJSONParser {
           //поэтому это не верное решение, просто заменять символ Т. Вот пример 2011-08-12T20:17:46.384Z
           //Z - 'zero time zone' or 'Zulu time'
           //Найди другое решение для парсинга времени
-
           LocalDateTime dateTime = LocalDateTime.parse(tstmp);
-
-          tstmp = tstmp.replaceAll("T", " ");
           accountJSONRecord.registered_at = Timestamp.valueOf(dateTime);
           accountJSONRecord.client_id = obj.getString("client_id");
 

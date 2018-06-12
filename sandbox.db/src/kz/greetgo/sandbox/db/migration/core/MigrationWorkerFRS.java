@@ -1,9 +1,5 @@
 package kz.greetgo.sandbox.db.migration.core;
 
-import kz.greetgo.sandbox.db.util.App;
-
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -13,7 +9,7 @@ import java.sql.PreparedStatement;
 public class MigrationWorkerFRS extends MigrationWorker{
 
   private InputStream inputStream;
-//  private OutputStream errorOutStream;
+  private OutputStream errorOutStream;
 
   private int batchSize = 0;
 
@@ -25,10 +21,10 @@ public class MigrationWorkerFRS extends MigrationWorker{
     return sql;
   }
 
-  public MigrationWorkerFRS(Connection connection, InputStream inputStream, int batchSize) {
+  public MigrationWorkerFRS(Connection connection, InputStream inputStream, OutputStream errorOutStream, int batchSize) {
     this.connection = connection;
     this.inputStream = inputStream;
-//    this.errorOutStream = errorOutStream;
+    this.errorOutStream = errorOutStream;
     this.batchSize = batchSize;
 
     tmpAccountTable = "frs_migration_account_";
@@ -36,6 +32,7 @@ public class MigrationWorkerFRS extends MigrationWorker{
   }
 
   public void migrate() throws Exception {
+
     createTmpTables();
 
     download();
@@ -179,13 +176,9 @@ public class MigrationWorkerFRS extends MigrationWorker{
 
   private void uploadErrorsToFile() throws Exception {
 
-    File file = new File(App.appDir() + "/frsErrors.txt");
-
-    try(OutputStream out = new FileOutputStream(file)) {
-      try(OutputStreamWriter writer = new OutputStreamWriter(out)) {
-        uploadErrors("TMP_TRANSACTION", writer);
-        uploadErrors("TMP_ACCOUNT", writer);
-      }
+    try (OutputStreamWriter writer = new OutputStreamWriter(errorOutStream)) {
+      uploadErrors("TMP_TRANSACTION", writer);
+      uploadErrors("TMP_ACCOUNT", writer);
     }
   }
 }
